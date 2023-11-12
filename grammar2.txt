@@ -1,0 +1,7 @@
+E->E or E
+E-> E and E
+E->not E
+E->(E)
+E->id rop id
+E->true
+E->false
