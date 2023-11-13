@@ -265,17 +265,8 @@ int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几�
     it.operated = false;
     strcpy(it.item, lines[i]);
     it.loc = get_production_right(it.item);
-    bool flag = true;
-    for (int j = 0; j < set->cnt; ++ j)
-        // 没有重复的才添加进去
-        if (set->item_set[j].loc == it.loc && strcmp(set->item_set[j].item, it.item) == 0)
-            flag = false;
-            
-    if (flag){
-        set->item_set[set->cnt ++] = it;
-        if (set->cnt >= NUM_PER_SET) return -1; 
-    }
-         // 超长了 
+    set->item_set[set->cnt ++] = it;
+    if (set->cnt >= 10) return -1;          // 超长了 
     return 1;
 }
 bool is_front_repeated(struct lr_item_set* S, char str[]){
@@ -313,30 +304,9 @@ bool is_item_left(struct lr_item_set* S){
 }
 void expand(struct lr_item_set* S){
     // 项目集的 核 开始扩张
-    printf("UID:%d, cnt:%d\n", S->status, S->cnt);
-    int scnt = S->cnt;  // 循环过程中，S->cnt会发生改变！！！！
-    for(int i = 0; i < S->cnt; ++ i){
-        printf("%d, %s\n", S->item_set[i].loc, S->item_set[i].item);
-    }
-    printf("???????????????????\n");
     for (int i = 0; i < S->cnt; ++ i){
-        int loc = S->item_set[i].loc;
-        // 达到了末尾，即是一个规约状态（ LR(0), SLR(1)待定
-        // to be optomized, to do
-        char ct_vn = S->item_set[i].item[loc]; 
-        printf("%s, ct_vn is:%c\n", S->item_set[i].item, ct_vn);
-
-        if (ct_vn == '\0') continue;
-        // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
-        if (is_vn(ct_vn)) 
-            for (int j = 0; j < line_num; ++ j){
-                int left = get_production_left(lines[j]);
-                // 大于1就出错了，因为最长的S'的left才是1
-                if (left > 1) {printf("error left, unrecommended space ' '!\n"); exit(-1);}     
-                if (ct_vn == lines[j][left]) add_item_to_set(S, j);
-            }  
+        char c = S->item_set[i].item[0];       
     }
-
 }
 void shift(struct lr_item_set* S){
     // 移进
@@ -397,7 +367,7 @@ void shift(struct lr_item_set* S){
             S->next[S->cnt_next_status].status = new->status;   // UID记录
             strcpy(S->next[S->cnt_next_status].edge, tmp);
             S->cnt_next_status ++;
-            // 找到了，给这个新项目集添加 核
+            // 找到了，给这个新项目集添加项目
             // for (int j = 0; j < S->cnt && !S->item_set[j].operated; ++ j){
             for (int j = 0; j < S->cnt; ++ j){
                 if (S->item_set[j].operated) continue;
@@ -427,8 +397,6 @@ void shift(struct lr_item_set* S){
                     }
                 }
             }
-            
-            expand(new);
         }
 
 
@@ -447,18 +415,15 @@ void init(struct lr_item_set** S){
     // (*S)->status = UID ++, (*S)->cnt = 0, (*S)->cnt_next_status = 0;        // 记得初始化值！
     (*S) = init_lr_item_set();
     add_item_to_set(*S, 0);
-    expand(*S);
     printf("%d, %d, %s\n", (*S)->cnt, (*S)->item_set[0].loc, (*S)->item_set[0].item);
-    
-    // char ct_vn = (*S)->item_set[0].item[(*S)->item_set[0].loc];   
-    // // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
-    // if (is_vn(ct_vn)) 
-    //     for (int i = 0; i < line_num; ++ i){
-    //         int left = get_production_left(lines[i]);
-    //         // 大于1就出错了，因为最长的S'的left才是1
-    //         if (left > 1) {printf("error left!\n"); break;}    
-    //         if (ct_vn == lines[i][left]) add_item_to_set(*S, i);
-    //     }
+    char ct_vn = (*S)->item_set[0].item[(*S)->item_set[0].loc];   
+    // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
+    if (is_vn(ct_vn)) 
+        for (int i = 0; i < line_num; ++ i){
+            int left = get_production_left(lines[i]);
+            if (left > 1) break;
+            if (ct_vn == lines[i][left]) add_item_to_set(*S, i);
+        }
     
     for (int i = 0; i < (*S)->cnt; ++ i)
         printf("%d, %s\n", (*S)->item_set[i].loc, (*S)->item_set[i].item);
@@ -487,7 +452,6 @@ int main(int argc, char *argv[]){
     }
     printf("====================\n");
     for (int i = 0; i < UID; ++ i){
-        printf("UID:%d\n", i);
         for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j)
             printf("%d, %s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
         printf("------------------------------\n");

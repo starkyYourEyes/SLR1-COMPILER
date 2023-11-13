@@ -10,9 +10,9 @@
 #define LINE_MAX 1024
 #define MAX_LEN_VN 3
 #define MAX_LEN_VT 10
-
+#define MAX_LEN_PRODUCTION 20
 int NUM_VN = 0;		// 非终结符的个数
-char lines[30][20]; // 产生式的个数
+char lines[32][MAX_LEN_PRODUCTION]; // 产生式的个数
 int line_num = 0;
 // struct NEXT
 // {
@@ -35,7 +35,7 @@ struct SET{
 
 struct CHARS{
 	int len_vn;				 // 非终结符的个数
-	char vn[20][MAX_LEN_VN]; // 非终结符, 最长为2, S'
+	char vn[20][MAX_LEN_VN]; // 非终结符, 最长为3, S' + '\0'
 	int len_vt;				 // 终结符的个数
 	char vt[40][MAX_LEN_VT]; // 终结符
 } *V;
@@ -90,7 +90,7 @@ bool is_vn(char ch){
 			return true;
 	return false;
 }
-char *is_prefix(struct CHARS *V, char s[]){
+char *is_prefix(char s[]){
 	// 这里的s对应的是产生式的右边
 	/*is_prefix计算的是，某一个非终结符s，其对应的产生式 右边的直接的终结符，直接加入到其first集中
 	也可以用来判断：s这个字符串的开头是不是一个非终结符。*/
@@ -119,7 +119,7 @@ bool is_repeated(struct SET* F, char *s){
 			return true;
 	return false;
 }
-int get_vs(char *path, struct CHARS *V){
+int get_vs(char *path){
 	// 获取所有的终结符和非终结符
 	FILE *fp;
 	int line_num = 0;		  // 文件行数
@@ -239,6 +239,7 @@ int get_vs(char *path, struct CHARS *V){
 	return line_num;
 }
 int get_production_left(char* line){
+	// 产生式的开头不可以有空格
 	// 找到产生式的左边的结束的位置
 	int loc = 0;
 	for(; line[loc] && line[loc] != '-'; ++ loc){};	// 找到 - 的位置
@@ -292,7 +293,7 @@ void read_lines(char *path){
 			if (0 == line_len)
 				continue; //空行
 		}
-		strcpy(lines[line_num++], buf);
+		strcpy(lines[line_num ++], buf);
 	}
 	if (0 == feof){
 		printf("fgets error\n"); // 未读到文件末尾
@@ -323,7 +324,7 @@ void cal_first(struct SET *FIRST){
 
 			// 这里其实只要执行一遍就可以了，扫描一遍，将右侧直接的终结符，如S->aS，这种的直接添加到first集
 			/*To be optimized*/
-			char *s = is_prefix(V, tmp);
+			char *s = is_prefix(tmp);
 			if (s == NULL){ // 右边没有直接的非终结符，跳过
 			} else{		// 右边有直接的非终结符，加入到first集中
 				bool flag = true; // 判断该非终结符是否已经在first集中
@@ -413,7 +414,7 @@ void cal_follow(){
 						printf("error3!"); return;
 					} 
 					// printf("lines[i] + j:%s\n", lines[i] + j);
-					char* s = is_prefix(V, lines[i] + j);	
+					char* s = is_prefix(lines[i] + j);	
 					if (s == NULL){	// 如果是非终结符，把他的first集添加进去
 						char tmp[2];
 						tmp[0] = lines[i][j], tmp[1] = 0;
@@ -498,7 +499,7 @@ void cal_follow(){
 int main(int argc, char *argv[]){
 	V = (struct CHARS *)malloc(sizeof(struct CHARS));
 	V->len_vn = V->len_vt = 0;
-	int line_num = get_vs(argv[1], V) / 2;
+	int line_num = get_vs(argv[1]) / 2;
 	printf("line_num = %d\n", line_num);
 	printf("%d Vns: \n", V->len_vn);
 	for (int i = 0; i < V->len_vn; ++i){
@@ -577,7 +578,7 @@ int main(int argc, char *argv[]){
 			if (j < FOLLOW_[i].cnt - 1)
 				printf(", ");
 		}
-		printf(" };\n");
+		printf(" }\n");
 	}
 	// printf("\n===============================================\n");
 	// 	for (int i = 0; i < V->len_vn; ++ i){
