@@ -140,9 +140,8 @@ int get_vs(char *path){
 		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1]){
 			buf[line_len - 1] = '\0';
 			line_len--;
-			if (0 == line_len)
-				continue; //空行
 		}
+		if (0 == line_len) continue; //空行
 		// printf("%s\n", buf);
 		// 扫描获取非终结符
 		int start = 0;
@@ -173,10 +172,10 @@ int get_vs(char *path){
 		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1]){
 			buf[line_len - 1] = '\0';
 			line_len--;
-			if (0 == line_len)
-				continue; //空行
+			// if (0 == line_len)
+			// 	continue; //空行
 		}
-
+		if (0 == line_len) continue; //空行
 		int loc = 0;
 		for (; buf[loc] != '>' || buf[loc] == ' '; loc++){}; // 清除'>'后面的空格,短路或
 		// printf("raw: %s\n", buf + loc + 1);
@@ -291,9 +290,10 @@ void read_lines(char *path){
 		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1]){
 			buf[line_len - 1] = '\0';
 			line_len--;
-			if (0 == line_len)
-				continue; //空行
+			// if (0 == line_len)
+			// 	continue; //空行
 		}
+		if (0 == line_len) continue; //空行
 		strcpy(lines[line_num ++], buf);
 	}
 	if (0 == feof){

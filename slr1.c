@@ -35,8 +35,8 @@ struct lr_item{
 struct lr_item_set {  
     // lr项目集
     int status;                     // 项目集的名字，如I0,I2...,这里用数字表示0，1，2，3
-    int cnt;                        // 项目集中项目的个数
     int core;                       // 该项目集的核 的个数
+    int cnt;                        // 项目集中项目的个数
     struct lr_item item_set[NUM_PER_SET];    // 这里假设每一个项目集中最多有20个项目
     // char edge[MAX_LEN_VT];       // 状态图中的边
     // to be optimized
@@ -568,12 +568,12 @@ void read_fisrt_follow_sets(){
 		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1]){
 			buf[line_len - 1] = '\0';
 			line_len--;
-			if (0 == line_len){
-                cnt = 0;
-                mode = 1;
-				continue; //空行
-            }
 		}
+        if (0 == line_len){
+            cnt = 0;
+            mode = 1;
+            continue; //空行
+        }
         int loc = 0;
 		for (loc = 0; buf[loc] != ':'; ++ loc){};
         loc ++;
@@ -609,6 +609,29 @@ void read_fisrt_follow_sets(){
 
     fclose(fp);
 }
+int is_in_follow_set(char *vn, char *s){
+    // 判断vn的follow集包不包含s
+    // printf("vn:%s\n", vn);
+    int no = get_vn_no(vn);
+    if (no == -1){
+        printf("find error!\n");
+        exit(-1);
+    }
+    for (int i = 0; i < FOLLOW_[no].cnt; ++ i)
+        if (strcmp(FOLLOW_[no].set[i], s) == 0)
+            return i;
+    return -1;
+}
+bool is_null_unite_sets(char *v1, char *v2){
+    // 判断两个vn的follow集是不是有交集
+    int n1 = get_vn_no(v1), n2 = get_vn_no(v2);
+    for (int i = 0; i < FOLLOW_[n1].cnt; ++ i)
+        for (int j = 0; j < FOLLOW_[n2].cnt; ++ j)
+            if (strcmp(FOLLOW_[n1].set[i], FOLLOW_[n2].set[j]) == 0)
+                return false;
+    return true;
+}
+
 void lr_table_generator(){
     // TABLE_ITEM是全局变量，默认初始化为0了
     memset(TABLE_ITEM, 0, COUNT * sizeof(struct table_item));
@@ -618,17 +641,107 @@ void lr_table_generator(){
     for (int i = 0; i < UID; ++ i){
         TABLE_ITEM[i].status = i;
         bool reduce = ALL_LR_ITEM_SET[i]->can_reduce;
+        int which = -1; // 如果是有移进-规约冲突，which记录下来是哪一个vn
+        int rs[COUNT] = {0};    // 记录哪些项目可以进行规约了
+        int num_rs = 0;
+        int ts[COUNT] = {0};    // 可以移进的项目的非终结符的序号
+        int num_ts = 0;
+        int no_ts[COUNT] = {0}; // 可以移进的项目的序号
+        int num_no_ts = 0;
+
         if (reduce){
             // 查看是否有规约-规约冲突
-            int num = 0;
-            for (int j = 0; j < ALL_LR_ITEM_SET[i]->core; ++ j){
+            for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j){    // 可以规约的只在核里面
                 int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
-                if (ALL_LR_ITEM_SET[i]->item_set[j].item[loc] == '\0')
-                    num ++;
+                if (ALL_LR_ITEM_SET[i]->item_set[j].item[loc] == '\0'){
+                    // if ()
+                    which = j;
+                    rs[num_rs ++] = j;
+                } else {    // is_prefix返回的是一个非终结符 或者 NULL
+                    char *s = is_prefix(ALL_LR_ITEM_SET[i]->item_set[j].item + loc);
+                    if (s == NULL) continue;
+                    else {  
+                        // 记录哪些是可以移进的，放在if (reduce)里面是因为这里才可能有移进-规约冲突
+                        int no = get_vt_no(s);
+                        ts[num_ts ++] = no;
+                        no_ts[num_no_ts ++] = j;
+                    }
+                }
             }
-            if (num > 1){
-                // 有规约-规约冲突，查看follow集，判断SLR1 能不能解决。
+            printf("attention: %d-", i);
+            for (int k = 0; k < num_rs; ++ k) printf("%d ", rs[k]);
+            printf("-");
+            for (int k = 0; k < num_no_ts; ++ k) printf("%d ", no_ts[k]);
+            printf("\n");
+            printf("eeee-num_rs is:%d \n", num_rs);
 
+            // 判断是否有包含关系 e.g. Follow(A) 包含 非终结符
+            
+            for (int h = 0; h < num_ts; ++ h){
+                int is_error = 0;   // 不符合P139的条件，有两个及以上的可规约项目的follow集中包含同一个非终结符
+                for (int k = 0; k < num_rs; ++ k){
+                    // 拿到产生式左边的终结符
+                    int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[k]].item);
+                    char tmp_vn[5] = {0};
+                    for (int p = 0; p <= t; ++ p) tmp_vn[p] = lines[which][p];
+                    tmp_vn[t + 1] = '\0';
+                    if (is_in_follow_set(tmp_vn, V->vt[ts[h]]) != -1){
+                        is_error ++;
+                        if (is_error >= 2){
+                            printf("%d\n", i);
+                            printf("%s is in follow set!", V->vt[ts[h]]);
+                            exit(-1);
+                        }
+                        
+                    }
+                }   
+            }
+            // if (num_rs == 0) {
+            //     printf("eeeeeee!\n");
+            //     exit(-1);
+            // }
+            if (num_rs == 1) { // 只有一条·到达末尾的，再其FOLLOW集里面就能规约
+                // 拿到产生式左边的终结符
+                printf("look:%d, %s", i, ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
+                int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
+                char tmp_vn[5] = {0};
+                for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[which].item[p];
+                tmp_vn[t + 1] = '\0';
+                // int no = get_vn_no(tmp_vn);
+
+                char tmp[5] = {0};
+                int no = get_production_no(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
+                tmp[0] = 'r';
+                itoa(no, tmp + 1, 10);
+                printf(":::%d . ", i);
+                for (int j = 0; j < V->len_vt; ++ j)
+                    if (is_in_follow_set(tmp_vn, V->vt[j]) != -1){
+                        printf("%s -> %s, ", tmp_vn, V->vt[j]);
+                        strcpy(TABLE_ITEM[i].ACTION[j], tmp);
+                    }
+                printf("\n");
+            } else if (num_rs > 1){    // 有多个，判断是否有规约规约冲突
+                for (int k = 0; k < num_rs; ++ k){
+                    for (int h = k + 1; h < num_rs; ++ h){
+                        char tmp1[5], tmp2[5];
+                        int len = get_production_left(ALL_LR_ITEM_SET[i]->item_set[k].item);
+                        for (int m = 0; m <= len; ++ m)
+                            tmp1[m] = ALL_LR_ITEM_SET[i]->item_set[k].item[m];
+                        tmp1[len + 1] = '\0';
+                        len = get_production_left(ALL_LR_ITEM_SET[i]->item_set[h].item);
+                        for (int m = 0; m <= len; ++ m)
+                            tmp2[m] = ALL_LR_ITEM_SET[i]->item_set[h].item[m];
+                        tmp2[len + 1] = '\0';
+
+                        if (!is_null_unite_sets(tmp1, tmp2)){
+                            printf("%s %s follow set unite is not null!\n", tmp1, tmp2);
+                            exit(-1);
+                        }
+                    }
+                }
+                // // 有规约-规约冲突，查看follow集，判断SLR1 能不能解决。
+                // printf("!!!reduce-reduce conflict!!!\n");
+                // // exit(-1);
             }
                 
         }
@@ -643,8 +756,21 @@ void lr_table_generator(){
                 strcpy(TABLE_ITEM[i].ACTION[no], tmp);
                 // 移进-规约冲突的处理！
                 if (ALL_LR_ITEM_SET[i]->can_reduce){
+                    for (int y = 0; y < num_rs; ++ y){
+                        // if (is_in_follow_set(, V->vt[no]))
+                    }
+                    int t = get_production_left(lines[which]);
+                    char tmp_vn[5] = {0};
+                    for (int p = 0; p <= t; ++ p) tmp_vn[p] = lines[which][p];
+                    tmp_vn[t + 1] = '\0';
                     // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
-
+                    if (is_in_follow_set(tmp_vn, V->vt[no]) != -1){
+                        printf("vt in follow error!\n");
+                        exit(-1);
+                    } else {
+                        
+                        
+                    }
                 }
                 // strcpy(TABLE_ITEM[i].ACTION[no], ALL_LR_ITEM_SET[i]->next[j].edge);    
             } else if ((no = get_vn_no(ALL_LR_ITEM_SET[i]->next[j].edge)) != -1){
@@ -671,7 +797,8 @@ int main(int argc, char *argv[]){
     V = (struct CHARS *)malloc(sizeof(struct CHARS));
 	V->len_vn = V->len_vt = 0;
     get_vs(argv[1]);
-
+    // 这里的终结符要加一个 # 
+    strcpy(V->vt[V->len_vt ++], "#\0");
     // 初始化求所有的项目集
     struct lr_item_set* S;
     init(&S);
@@ -711,8 +838,9 @@ int main(int argc, char *argv[]){
         }
         printf("------------------------------\n");
     }
-    // lr_table_generator();
     read_fisrt_follow_sets();
+
+    lr_table_generator();
     for (int i = 0; i < V->len_vn; ++ i){
         printf("%s: ", V->vn[i]);
         for (int j = 0; j < FIRST_[i].cnt; ++ j)
@@ -726,6 +854,76 @@ int main(int argc, char *argv[]){
             printf("%s, ", FOLLOW_[i].set[j]);
         printf("\n");
     }
+    {    // printf("`````````````````````````````````````\n");
+        printf("+----------------------------------------------------------------------------------------------------------------------+\n");
+        printf("|    |                                  ACTION                                         |              GOTO             |\n");
+        printf("|----+---------------------------------------------------------------------------------+-------------------------------|\n");
+        printf("|%4s|", "stat");
+        for (int i = 0; i < V->len_vt; ++ i)
+            printf("%3s|", V->vt[i]);
+        // printf("%3s|", "#");
+        for (int i = 0; i < V->len_vn; ++ i)
+            printf(" %-2s|", V->vn[i]);
+        printf("\n");
+        for (int i = 0; i < UID; ++ i){
+            printf("| %-2d |", TABLE_ITEM[i].status);
+            int sep = 0;
+            int back = 0;
+            for (int j = 0; j < V->len_vt; ++ j){
+                if (TABLE_ITEM[i].ACTION[j][1] == '0')
+                    strcpy(TABLE_ITEM[i].ACTION[j], "acc\0");
+
+                int len1 = strlen(V->vt[j]);
+                int len2 = strlen(TABLE_ITEM[i].ACTION[j]);
+                if (len1 > len2 && len2 > 0){
+                    sep = (len1 - len2) / 2;
+                    for (int i = 0; i < sep; ++ i) printf(" ");
+                    back = (len1 - len2) - sep;
+                }
+                else if (len2 <= 3 && len2 > 0){
+                    sep = (3 - len2) / 2;
+                    for (int i = 0; i < sep; ++ i) printf(" ");
+                    back = (3 - len2) - sep;
+                } else if (len2 == 0){
+                    int x = len1 > 3 ? len1 : 3;
+                    sep = x / 2;
+                    for (int j = 0; j < sep; ++ j) printf(" ");
+                    back = x - sep;
+                }
+                printf("%s", TABLE_ITEM[i].ACTION[j]);
+                for (int x = 0; x < back; ++ x) printf(" ");
+                printf("|");
+            }
+            // if (TABLE_ITEM[i].status == 1){ // 状态1是接受
+            //     printf("acc|");
+            // } else
+            //     printf("   |");
+            for (int j = 0; j < V->len_vn; ++ j){
+                int len1 = strlen(V->vn[j]);
+                int len2 = strlen(TABLE_ITEM[i].GOTO[j]);
+                if (len1 > len2 && len2 > 0){
+                    sep = (len1 - len2) / 2;
+                    for (int i = 0; i < sep; ++ i) printf(" ");
+                    back = (len1 - len2) - sep;
+                }
+                else if (len2 <= 3 && len2 > 0){
+                    sep = (3 - len2) / 2;
+                    for (int i = 0; i < sep; ++ i) printf(" ");
+                    back = (3 - len2) - sep;
+                } else if (len2 == 0){
+                    int x = len1 > 3 ? len1 : 3;
+                    sep = x / 2;
+                    for (int j = 0; j < sep; ++ j) printf(" ");
+                    back = x - sep;
+                }
+                printf("%s", TABLE_ITEM[i].GOTO[j]);
+                for (int x = 0; x < back; ++ x) printf(" ");
+                printf("|");
+            }
+            printf("\n");
+        }
+        printf("+----------------------------------------------------------------------------------------------------------------------+\n");
+}
     // {
     //     printf("%d Vns: \n", V->len_vn);
     //     for (int i = 0; i < V->len_vn; ++i){
