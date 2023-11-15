@@ -12,16 +12,19 @@
 // }
 #include <stdio.h>
 #include <string.h>
-void demo(int *x){
+#include <stdlib.h>
+void demo(char s[], int x){
     // ++ *x;   // equals to (*x) ++;
     // *x ++;
-    
+    // while (x)
 }
 int main(void){
-    int x = 1;
-    printf("%d, ", x);
-    demo(&x);
-    printf("%d", x);
+    int x = 14;
+    // printf("%d, ", x);
+    char tmp[10];
+    tmp[0] = 'S';
+    itoa(x,tmp + 1,10);
+    printf("%d, %s", strlen(tmp), tmp);
 }
 
 

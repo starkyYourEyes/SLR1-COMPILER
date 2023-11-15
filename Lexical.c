@@ -12,7 +12,7 @@ char KEYWORD[][8] = {"begin", "end", "if", "then", "or", "and", "not", "rop", "t
 char buffer[ID_MAX_LEN];    // 临时存储词法分析器读入的串
 int idx;            // 全局变量默认值即为0，idx指针保存当前buffer的长度
 int line_num;       // 当前分析的行号
-struct identify{ // 标识符
+struct identify{    // 标识符
     int cnt;
     char identify[ID_MAX_NUM][ID_MAX_LEN];
 } ID;
@@ -149,6 +149,7 @@ int main(int argc, char *argv[]){
 	}
     // printf("ok\n");
 	fclose(fp);
+    fclose(fp_res);
     // for (int i = 0; i < sizeof(KEYWORD) / sizeof(KEYWORD[0]); ++ i){
     //     printf("%d:%s, ", strlen(KEYWORD[i]), KEYWORD[i]);
     // }

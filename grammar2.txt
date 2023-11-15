@@ -1,3 +1,4 @@
+E'->E
 E->E or E
 E-> E and E
 E->not E

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#define COUNT 20
+#define COUNT 96    // 项目集最多数目
 #define ITEM_LEN 5
 #define MAX_LEN_PRODUCTION 20
 #define LINE_MAX 128
@@ -16,6 +16,13 @@
 typedef char production[MAX_LEN_PRODUCTION];
 int line_num;
 production lines[32];
+struct SET{                     // first集，follow集
+	char vn[MAX_LEN_VN];	    // 非终结符的名称
+	int cnt;				    // first集中终结符的个数
+	// set存储的是first集和follow集中的元素，且假设每个非终结符的first、follow集中的元素个数不超过20个
+	// 在NODE_中表示计算这个非终结符的FOLLOW集所依赖的其他的非终结符
+	char set[20][MAX_LEN_VT]; 
+} FIRST_[20], FOLLOW_[20];
 struct next_status{
     int status;             // 指向的下一个项目集的UID
     char edge[MAX_LEN_VT];  // 通过那条边指向下一个项目集，即通过什么字符到达的
@@ -29,25 +36,29 @@ struct lr_item_set {
     // lr项目集
     int status;                     // 项目集的名字，如I0,I2...,这里用数字表示0，1，2，3
     int cnt;                        // 项目集中项目的个数
+    int core;                       // 该项目集的核 的个数
     struct lr_item item_set[NUM_PER_SET];    // 这里假设每一个项目集中最多有20个项目
     // char edge[MAX_LEN_VT];       // 状态图中的边
     // to be optimized
     int cnt_next_status;            // 用于下面的那个数组的计数
     // 存储图的指向的序号（status）的集合，这里假设最多指向MAX_STATUS_NEXT个
-    struct next_status next[MAX_STATUS_NEXT];    
+    struct next_status next[MAX_STATUS_NEXT];
+    bool can_reduce;                // 这个项目集是否可以规约
 };
 /*。。。。。。。。。。。。。。。。。。。。。。。。。。*/
-int UID; // 分配给每一个项目集的唯一的编号，即项目集的status
+int UID;        // 分配给每一个项目集的唯一的编号，即项目集的status
+int CONTINUE_;   // 标记是否继续扩充项目集（项目集是否还再变化）
 struct lr_item_set* ALL_LR_ITEM_SET[COUNT];// 一个指针数组, 用来寻找所有的 lr_item_set，记录起来
 
 struct table_item { 
     // SLR分析表的每一行。
-    int status;         // 每一行的编号，也即项目集编号
+    int status;                 // 每一行的编号，也即项目集编号
     int action_idx;
     char ACTION[40][ITEM_LEN];
     int goto_idx;
     char GOTO[20][ITEM_LEN];
 } TABLE_ITEM[COUNT];        // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
+
 struct CHARS{
 	int len_vn;				// 非终结符的个数
 	char vn[20][MAX_LEN_VN];         // 非终结符, 最长为3, S' + '\0'
@@ -66,9 +77,17 @@ int get_vt_no(char* vt){
 	// 找到这个终结符的编号，
 	// 因为终结符的 顺序都是按照V中的顺序来的，所以终结符的顺序唯一，只需要确定其编号
 	for (int i = 0; i < V->len_vt; ++ i){
-		if (strcmp(vt, V->vt[i]))
+		if (strcmp(vt, V->vt[i]) == 0)
 			return i;
 	}
+	return -1;
+}
+int get_vn_no(char* vn){
+	// 找到这个非终结符的编号，
+	// 因为非终结符的 顺序都是按照V中的顺序来的，所以非终结符的顺序唯一，只需要确定其编号
+	for (int i = 0; i < V->len_vn; ++ i)
+		if (strcmp(vn, V->vn[i]) == 0)
+			return i;
 	return -1;
 }
 bool is_alpha(char ch){
@@ -245,8 +264,8 @@ int get_production_left(char* line){
 	int loc = 0;
 	for(; line[loc] && line[loc] != '-'; ++ loc){};	// 找到 - 的位置
 	loc --;
-	while (loc >= 0 && line[loc] == ' '){ loc --; }; // 跳过空格
-	if (loc < 0) return -1; // 错误
+	while (loc > 0 && line[loc] == ' '){ loc --; }; // 跳过空格
+
 	return loc;
 }
 
@@ -256,7 +275,8 @@ int get_production_right(char* line){
 	for(; line[loc] && line[loc] != '>'; ++ loc){};	// 找到 > 的位置
 	loc ++;
 	while (line[loc] && line[loc] == ' '){ loc ++; }; // 跳过空格
-	if (loc >= strlen(line)) return -1; // 错误
+    // to do, to be
+	if (loc > strlen(line)) return -1; // 错误
 	return loc;
 }
 int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几个产生式
@@ -267,7 +287,7 @@ int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几�
     it.loc = get_production_right(it.item);
     bool flag = true;
     for (int j = 0; j < set->cnt; ++ j)
-        // 没有重复的才添加进去
+        // 没有重复（·的位置和字符串都不重复）的才添加进去
         if (set->item_set[j].loc == it.loc && strcmp(set->item_set[j].item, it.item) == 0)
             flag = false;
             
@@ -275,10 +295,11 @@ int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几�
         set->item_set[set->cnt ++] = it;
         if (set->cnt >= NUM_PER_SET) return -1; 
     }
-         // 超长了 
+        // 超长了 
     return 1;
 }
 bool is_front_repeated(struct lr_item_set* S, char str[]){
+    // 在移进的时候是否遇到重复的字符（串
     for (int i = 0; i < S->cnt_next_status; ++ i)
         if (strcmp(str, S->next[i].edge) == 0)  
             return true;
@@ -288,14 +309,18 @@ bool equal_prefix(char *s, char *t){
     // s是直到他的长度 的，所以s要放在前面
     // printf("---compares:\n");
     for (int i = 0; s[i]; ++ i)
-        if (s[i] != t[i]) return false;
+        if (s[i] != t[i]) 
+            return false;
     return true;
 }
+
 struct lr_item_set* init_lr_item_set(){
     // 初始化一个lr_item_set并返回
     struct lr_item_set *S = (struct lr_item_set*)malloc(sizeof(struct lr_item_set));
-    ALL_LR_ITEM_SET[UID] = S;  // 记录在指针数组中
-    S->status = UID ++, S->cnt = 0, S->cnt_next_status = 0;        // 记得初始化值！
+    ALL_LR_ITEM_SET[UID] = S;   // 记录在指针数组中
+    // 记得初始化值！
+    S->status = UID ++, S->core = 0, S->cnt = 0, S->cnt_next_status = 0; 
+    S->can_reduce = false;      // 是否可以规约，初始为false       
     // 将opearated置为false
     memset(S->item_set, 0, NUM_PER_SET * sizeof(struct lr_item));
     // for (int i = 0; i < 10; ++ i)
@@ -304,53 +329,115 @@ struct lr_item_set* init_lr_item_set(){
     memset(S->next, 0, MAX_STATUS_NEXT * (sizeof(struct next_status)));
     return S; 
 }
-
+void del_lr_item_set(struct lr_item_set **S){
+    UID --;     // UID为全局变量！
+    printf("%s was freed!!\n", (*S)->item_set[0].item);
+    free(*S);
+}
+int is_itemset_repeated(struct lr_item_set* S){
+    // to be optimized , to do
+    // 判断是否有一样的项目集, 即核一样，在新增加完项目集并且把核添加进去了后判断。
+    // 如果有重复的，就把重复的那个的UID返回回去
+    // 无重复返回-1
+    // printf("\n+++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+    for (int i = 0; i < UID - 1; ++ i){ // < UID - 1, 因为不包括自己
+        // 先找核中项目数一样的
+        if (ALL_LR_ITEM_SET[i]->core == S->core){
+            // printf("in comp:%s, %s\n", ALL_LR_ITEM_SET[i]->item_set[0].item, S->item_set[0].item);
+            bool flag[COUNT] = {false};
+            // printf("S-cnt:%d, A-cnt:%d\n", S->core, ALL_LR_ITEM_SET[i]->core);
+            // printf("'''''''''''''''''''''''''''''''''''''''''''''''''''''''''\n");
+            for (int j = 0; j < S->core; ++ j){
+                for (int k = 0; k < ALL_LR_ITEM_SET[i]->core; ++ k){
+                    if (ALL_LR_ITEM_SET[i]->item_set[k].loc == S->item_set[j].loc)
+                        if (strcmp(ALL_LR_ITEM_SET[i]->item_set[k].item, S->item_set[j].item) == 0)
+                            flag[j] = true;
+                    // printf("A: %d, %s\n", ALL_LR_ITEM_SET[i]->item_set[k].loc, ALL_LR_ITEM_SET[i]->item_set[k].item);
+                    // printf("B: %d, %s\n", S->item_set[j].loc, S->item_set[j].item);
+                }
+            }
+            int k;
+            for (k = 0; k < S->core; ++ k)
+                if (!flag[k]) break;
+            if (k >= S->core) return i;
+        }
+    }
+    // printf("*********************************************************\n");
+    // printf("true!!!!!!!!!!!!!!\n");
+    return -1;
+}
 bool is_item_left(struct lr_item_set* S){
     for (int i = 0; i < S->cnt; ++ i)
         if (!S->item_set[i].operated)
             return true;
     return false;
 }
+void shift(struct lr_item_set* S);
 void expand(struct lr_item_set* S){
     // 项目集的 核 开始扩张
     printf("UID:%d, cnt:%d\n", S->status, S->cnt);
     int scnt = S->cnt;  // 循环过程中，S->cnt会发生改变！！！！
     for(int i = 0; i < S->cnt; ++ i){
-        printf("%d, %s\n", S->item_set[i].loc, S->item_set[i].item);
+        printf("expand() %d, %1c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
     }
     printf("???????????????????\n");
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
         // 达到了末尾，即是一个规约状态（ LR(0), SLR(1)待定
         // to be optomized, to do
-        char ct_vn = S->item_set[i].item[loc]; 
-        printf("%s, ct_vn is:%c\n", S->item_set[i].item, ct_vn);
+        char ch = S->item_set[i].item[loc]; 
+        printf("ct_loc:%d, ch:%c, ct_produce:%s\n", loc, ch, S->item_set[i].item);
 
-        if (ct_vn == '\0') continue;
+        if (ch == '\0') continue;
         // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
-        if (is_vn(ct_vn)) 
-            for (int j = 0; j < line_num; ++ j){
+        if (is_vn(ch)) 
+            for (int j = 1; j < line_num; ++ j){    // 第0行是S',不考虑它
                 int left = get_production_left(lines[j]);
                 // 大于1就出错了，因为最长的S'的left才是1
-                if (left > 1) {printf("error left, unrecommended space ' '!\n"); exit(-1);}     
-                if (ct_vn == lines[j][left]) add_item_to_set(S, j);
+                if (left > 0) {
+                    printf("left:%d, in line %d:%s  error left, unrecommended space ' '!\n", left, j, lines[j]); 
+                    exit(-1);
+                }     
+                if (ch == lines[j][left]) add_item_to_set(S, j);
             }  
     }
+    if (CONTINUE_ != UID){
+        CONTINUE_ = UID;
+        shift(S);
+    }
+        
+    // static int x = 0;
+    // if (x <= 80){
+    //     shift(S);
+    // }
+    // x ++;
+    
+    // // 这个重复是在shift里面判断就行（判断核是不是有重复
+    // if (is_itemset_repeated(S)){ 
+    //     // if (pre != NULL){
+    //     //     pre->cnt_next_status --;
+    //     //     pre->next[pre->cnt_next_status].status = pre->status;   // UID记录
+    //     //     // to be optimized,  to do
+    //     //     strcpy(pre->next[pre->cnt_next_status].edge, "?");
+    //     //     pre->cnt_next_status ++;
+    //     // }
 
+    //     // del_lr_item_set(&S);
+    // } else{
+    //     // shift(S);
+    // }
 }
+
 void shift(struct lr_item_set* S){
     // 移进
-    printf("cnt:%d\n", S->cnt);
-
-    // while (is_item_left(S)){
-    //             // 之前的那个项目集还有可以移进的项目
-    //             for (int i = 0; i < S->cnt; ++ i){
-                    
-    //             }
-    //         }
+    printf("shift() cnt:%d\n", S->cnt);
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
         char c = S->item_set[i].item[loc];
+        if (c == '\0') {
+            S->can_reduce = true;   // ·到达末尾，可以进行规约
+            continue;  // to do, to be optimized
+        }
         char tmp[MAX_LEN_VT];
         if (is_vn(c)) tmp[0] = c, tmp[1] = '\0';// 非终结符，移进一位
         // 终结符，移进相应长度的位数, 
@@ -358,81 +445,71 @@ void shift(struct lr_item_set* S){
         else {
             char *s = is_prefix(S->item_set[i].item + loc);
             if (s == NULL){
+                printf("ct:%s\n", S->item_set[i].item + loc);
+                for (int i = 0; i < S->cnt; ++ i){
+                    printf("%d, %s\n", S->item_set[i].loc, S->item_set[i].item);
+                }
                 printf("error!!!!!!\n");
                 exit(-1);
             }
             strcpy(tmp, s);
         }
-
-        // for (int j = 0; j < S->cnt && !S->item_set[j].operated; ++ j){
-        //     // 如果移进那个的字符没有重复，新建一个项目集
-        //     printf("tmp:%s\n", tmp);
-        //     struct lr_item_set* new = init_lr_item_set();
-        //     printf("comp:%s, %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
-        //     if (equal_prefix(tmp, S->item_set[j].item + S->item_set[j].loc)){
-        //         strcpy(new->item_set[new->cnt].item, S->item_set[j].item);
-        //         int k;  // 跳过空格
-        //         for (k = loc + strlen(tmp); new->item_set[new->cnt].item[k] && new->item_set[new->cnt].item[k] == ' '; ++ k){};
-        //         new->item_set[new->cnt].loc = k;    // 更新loc
-        //         // to be optimized. 
-        //         // 并且如果扫描到了结尾了-----处理一下to do
-        //         // int new_loc = new->item_set[new->cnt].loc;
-        //         // if (S->item_set[i].item[loc] == '\0') {
-        //         //     // · 到结尾了
-        //         // }
-        //         new->cnt ++;
-        //         S->item_set[j].operated = true; // 标记为已经扫描过
-        //         int new_loc = new->item_set[new->cnt].loc;
-        //         if (S->item_set[i].item[loc] == '\0') {
-        //             // · 到结尾了
-        //         }
-        //     }
-        // }
-        
+       
         if (!is_front_repeated(S, tmp)){
             // 如果移进那个的字符没有重复，才新建一个项目集（新建项目集的依据！
             // printf("tmp:%s\n", tmp);
             struct lr_item_set* new = init_lr_item_set();
             // 把信息复制过去
             S->next[S->cnt_next_status].status = new->status;   // UID记录
-            strcpy(S->next[S->cnt_next_status].edge, tmp);
+            strcpy(S->next[S->cnt_next_status].edge, tmp);      // 边记录
             S->cnt_next_status ++;
             // 找到了，给这个新项目集添加 核
-            // for (int j = 0; j < S->cnt && !S->item_set[j].operated; ++ j){
+            int core = 0;
             for (int j = 0; j < S->cnt; ++ j){
                 if (S->item_set[j].operated) continue;
                 // printf("comp:%s, %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
+                int a_loc = S->item_set[j].loc;
                 if (equal_prefix(tmp, S->item_set[j].item + S->item_set[j].loc)){
-                    printf("%s equals %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
-                    // printf("")
+                    // printf("%s equals %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
+                    core ++;
                     strcpy(new->item_set[new->cnt].item, S->item_set[j].item);
                     int k;  // 跳过空格
-                    for (k = loc + strlen(tmp); new->item_set[new->cnt].item[k] && new->item_set[new->cnt].item[k] == ' '; ++ k){};
+                    for (k = a_loc + strlen(tmp); new->item_set[new->cnt].item[k] && new->item_set[new->cnt].item[k] == ' '; ++ k){};
                     new->item_set[new->cnt].loc = k;    // 更新loc
-
-                    // to be optimized. 
-                    // 并且如果扫描到了结尾了-----处理一下to do
-                    // int new_loc = new->item_set[new->cnt].loc;
-                    // if (S->item_set[i].item[loc] == '\0') {
-                    //     // · 到结尾了
-
-                    // }
+                    printf("%d, %d, %d == ", k, a_loc, strlen(tmp));
+                    printf("!!!!! UID is:%d, a_loc:%d, %s\n", UID - 1, k, new->item_set[new->cnt].item);
                     new->cnt ++;
                     S->item_set[j].operated = true; // 标记为已经扫描过
                     // printf("%s is operated!!!!!\n", tmp);
+                    // to be optimized. 
+                    // 并且如果扫描到了结尾了-----处理一下to do
                     int new_loc = new->item_set[new->cnt].loc;
-                    if (S->item_set[i].item[loc] == '\0') {
-                        // · 到结尾了
-
+                    if (S->item_set[i].item[new_loc] == '\0') {
+                        // · 到结尾了to do
                     }
-                }
+                }  
             }
-            
-            expand(new);
+            new->core = core;   // 核中项目的个数
+            // to do, to be optimized
+            int res = is_itemset_repeated(new);
+            printf("%d new core is:\n", new->core);
+            for (int x = 0; x < new->core; ++ x){
+                int y = new->item_set[x].loc;
+                printf("--%d, %1c, %s\n", y, new->item_set[x].item[y], new->item_set[x].item);
+            }
+            printf("res:%d\n", res);
+            if (res != -1){
+                S->cnt_next_status --;
+                S->next[S->cnt_next_status].status = ALL_LR_ITEM_SET[res]->status;   // UID记录
+                strcpy(S->next[S->cnt_next_status].edge, tmp);
+                S->cnt_next_status ++;
+                del_lr_item_set(&new);
+            }
+            else expand(new);
+            // expand(new);
         }
-
-
-        printf("===%d, %s\n", S->item_set[i].loc, S->item_set[i].item);
+        
+        printf("===%d, %c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
     }
 }
 /*移进-归约冲突（shift-reduce conflict）*/
@@ -443,10 +520,12 @@ void reduce(){
 void init(struct lr_item_set** S){
     // 求初始的第一个 项目集。
     UID = 0;
+    CONTINUE_ = -1;
     // *S = (struct lr_item_set*)malloc(sizeof(struct lr_item_set));
     // (*S)->status = UID ++, (*S)->cnt = 0, (*S)->cnt_next_status = 0;        // 记得初始化值！
     (*S) = init_lr_item_set();
     add_item_to_set(*S, 0);
+    (*S)->core = 1;
     expand(*S);
     printf("%d, %d, %s\n", (*S)->cnt, (*S)->item_set[0].loc, (*S)->item_set[0].item);
     
@@ -463,9 +542,128 @@ void init(struct lr_item_set** S){
     for (int i = 0; i < (*S)->cnt; ++ i)
         printf("%d, %s\n", (*S)->item_set[i].loc, (*S)->item_set[i].item);
 }
+int get_production_no(char *prod){
+    // 获取产生式的编号
+    for (int i = 0; i < line_num; ++ i)
+        if (strcmp(lines[i], prod) == 0)
+            return i;
+    return -1;
+}
+void read_fisrt_follow_sets(){
+    for (int i = 0; i < V->len_vn; ++i) strcpy(FIRST_[i].vn, V->vn[i]);
+    for (int i = 0; i < V->len_vn; ++i) strcpy(FOLLOW_[i].vn, V->vn[i]);
+    FILE* fp = fopen("first-follow-set.txt", "r");
+    if (fp == NULL){
+        printf("read %s failed.", "first-follow-set.txt");
+        exit(-1);
+    }
+    char buf[128];
+    
+    int mode = 0;   // mode = 0 表示读取first集，1 表示读取follow集
+    int cnt = 0;
 
+    while (fgets(buf, LINE_MAX, fp)){
+		int line_len = strlen(buf);
+		// 排除换行符‘\n’ windos文本排除回车符'\r', 空格' '
+		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1]){
+			buf[line_len - 1] = '\0';
+			line_len--;
+			if (0 == line_len){
+                cnt = 0;
+                mode = 1;
+				continue; //空行
+            }
+		}
+        int loc = 0;
+		for (loc = 0; buf[loc] != ':'; ++ loc){};
+        loc ++;
+        printf("%s\n", buf + loc);
+        // 依次读取first集和follow集
+        int no = 0;
+        printf("cnt:%d\n", cnt);
+        while (buf[loc]){ // 双指针。。。
+            int j = loc;
+            for (; buf[j] && buf[j] != ' '; ++ j){};
+            // printf("%s, ", buf + j);
+            if (mode == 0){
+                FIRST_[cnt].cnt ++;
+                FIRST_[cnt].set[no][j - loc] = '\0';
+                printf("FIRST_ appended %s, ", buf + loc);
+                strncpy(FIRST_[cnt].set[no], buf + loc, j - loc);
+                printf("%s\n", FIRST_[cnt].set[no]);
+                no ++;
+            }
+            else {
+                FOLLOW_[cnt].cnt ++;
+                FOLLOW_[cnt].set[no][j - loc] = '\0';
+                strncpy(FOLLOW_[cnt].set[no ++], buf + loc, j - loc);
+            }
+            // cnt = cnt % V->len_vn;
+            if (buf[j]) loc = j + 1;
+            else loc = j;
+            // printf("%s\n", buf + loc);
+        }
+        cnt ++;
+        // printf("\n");
+	}
 
+    fclose(fp);
+}
+void lr_table_generator(){
+    // TABLE_ITEM是全局变量，默认初始化为0了
+    memset(TABLE_ITEM, 0, COUNT * sizeof(struct table_item));
+    for (int i = 0; i < V->len_vt; ++ i)
+        printf("%s, ", V->vt[i]);
+    printf("\n");
+    for (int i = 0; i < UID; ++ i){
+        TABLE_ITEM[i].status = i;
+        bool reduce = ALL_LR_ITEM_SET[i]->can_reduce;
+        if (reduce){
+            // 查看是否有规约-规约冲突
+            int num = 0;
+            for (int j = 0; j < ALL_LR_ITEM_SET[i]->core; ++ j){
+                int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
+                if (ALL_LR_ITEM_SET[i]->item_set[j].item[loc] == '\0')
+                    num ++;
+            }
+            if (num > 1){
+                // 有规约-规约冲突，查看follow集，判断SLR1 能不能解决。
+
+            }
+                
+        }
+        for(int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++ j){
+            char tmp[10];
+            int no = get_vt_no(ALL_LR_ITEM_SET[i]->next[j].edge);
+            
+            if (no != -1){
+                // 终结符，添加到ACTION
+                tmp[0] = 'S';
+                itoa(ALL_LR_ITEM_SET[i]->next[j].status, tmp + 1, 10);  // int to str
+                strcpy(TABLE_ITEM[i].ACTION[no], tmp);
+                // 移进-规约冲突的处理！
+                if (ALL_LR_ITEM_SET[i]->can_reduce){
+                    // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
+
+                }
+                // strcpy(TABLE_ITEM[i].ACTION[no], ALL_LR_ITEM_SET[i]->next[j].edge);    
+            } else if ((no = get_vn_no(ALL_LR_ITEM_SET[i]->next[j].edge)) != -1){
+                // 非终结符，添加到GOTO
+                itoa(ALL_LR_ITEM_SET[i]->next[j].status, tmp, 10);  // int to str
+                strcpy(TABLE_ITEM[i].GOTO[no], tmp);
+            } else {
+                printf("error error error\n");
+                exit(-1);
+            }
+        }
+    }
+}
 int main(int argc, char *argv[]){
+    FILE* fp = fopen("item_set.txt", "w");
+    if (NULL == fp){
+        printf("open %s failed.\n", "item_set.txt\0");
+        return -1;
+	}
     read_lines(argv[1]);
     for (int i = 0; i < line_num; ++ i)
         printf("%s\n", lines[i]);
@@ -479,18 +677,54 @@ int main(int argc, char *argv[]){
     init(&S);
     // ALL_LR_ITEM_SET = (struct lr_item_set*)malloc(COUNT * sizeof(struct lr_item_set));
     // printf("len:%d\n", S->cnt);
+
     shift(S);
-    printf("UID:%d\n", UID);
+
+    // printf("UID:%d\n", UID);
     printf("next num:%d\n", S->cnt_next_status);
     for (int i = 0; i < S->cnt_next_status; ++ i){
         printf("%d, %s\n", S->next[i].status, S->next[i].edge);
     }
+    
     printf("====================\n");
     for (int i = 0; i < UID; ++ i){
-        printf("UID:%d\n", i);
-        for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j)
-            printf("%d, %s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
+        printf("UID:%d  ", i);
+        fprintf(fp, "%d\n", i);
+        if (ALL_LR_ITEM_SET[i]->can_reduce) printf("yes");
+        else printf("no");
+        printf("\n");
+        for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++ j){
+            printf("(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
+            fprintf(fp, "(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
+        }
+        fprintf(fp, "\n");
+        printf("\ncore:\n");
+        for (int j = 0; j < ALL_LR_ITEM_SET[i]->core; ++ j){
+            int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
+            printf("%d, %d, %c, %s\n", ALL_LR_ITEM_SET[i]->core, loc, ALL_LR_ITEM_SET[i]->item_set[j].item[loc], ALL_LR_ITEM_SET[i]->item_set[j].item);
+        }
+        printf("\n");
+        for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j){
+            int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
+            printf("%d, %d, %c, %s\n", ALL_LR_ITEM_SET[i]->core, loc, ALL_LR_ITEM_SET[i]->item_set[j].item[loc], ALL_LR_ITEM_SET[i]->item_set[j].item);
+            fprintf(fp, "%d~%s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
+        }
         printf("------------------------------\n");
+    }
+    // lr_table_generator();
+    read_fisrt_follow_sets();
+    for (int i = 0; i < V->len_vn; ++ i){
+        printf("%s: ", V->vn[i]);
+        for (int j = 0; j < FIRST_[i].cnt; ++ j)
+            printf("%s, ", FIRST_[i].set[j]);
+        printf("\n");
+    }
+    printf("\n-------------------\n");
+    for (int i = 0; i < V->len_vn; ++ i){
+        printf("%s: ", V->vn[i]);
+        for (int j = 0; j < FOLLOW_[i].cnt; ++ j)
+            printf("%s, ", FOLLOW_[i].set[j]);
+        printf("\n");
     }
     // {
     //     printf("%d Vns: \n", V->len_vn);
@@ -501,12 +735,12 @@ int main(int argc, char *argv[]){
     //     printf("\n");
     //     printf("%d Vts: \n", V->len_vt);
     //     for (int i = 0; i < V->len_vt; ++i){
-    //         printf("%s, ", V->vt[i]);
+    //         printf("(%d, %s), ", strlen(V->vt[i]), V->vt[i]);
     //         if (i < V->len_vn - 1) printf(", ");
     //     }
     //     printf("\n");
     // }
     
-
+    fclose(fp);
     return 0;
 }

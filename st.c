@@ -39,6 +39,7 @@ struct CHARS{
 	int len_vt;				 // 终结符的个数
 	char vt[40][MAX_LEN_VT]; // 终结符
 } *V;
+
 // KMP算法。
 void Nextval(char T[], int *next){
 	int lenT = strlen(T);
@@ -269,7 +270,7 @@ int get_vt_no(char* vt){
 	// 找到这个终结符的编号，
 	// 因为终结符的 顺序都是按照V中的顺序来的，所以终结符的顺序唯一，只需要确定其编号
 	for (int i = 0; i < V->len_vt; ++ i){
-		if (strcmp(vt, V->vt[i]))
+		if (strcmp(vt, V->vt[i]) == 0)
 			return i;
 	}
 	return -1;
@@ -497,6 +498,11 @@ void cal_follow(){
 }
 
 int main(int argc, char *argv[]){
+	FILE* w_res = fopen("first-follow-set.txt", "w");
+	if (NULL == w_res){
+		printf("write %s failed.\n", "first-follow-set.txt");
+		return -1;
+	}
 	V = (struct CHARS *)malloc(sizeof(struct CHARS));
 	V->len_vn = V->len_vt = 0;
 	int line_num = get_vs(argv[1]) / 2;
@@ -540,12 +546,16 @@ int main(int argc, char *argv[]){
 	printf("first sets:\n");
 	for (int i = 0; i < V->len_vn; ++i){
 		printf("%-2s: { ", V->vn[i]);
+		fprintf(w_res, "%s:", V->vn[i]);
 		for (int j = 0; j < FIRST_[i].cnt; ++j){
 			printf("%s", FIRST_[i].set[j]);
+			fprintf(w_res, "%s ", FIRST_[i].set[j]);
 			if (j < FIRST_[i].cnt - 1) printf(", ");
 		}
 		printf(" }\n");
+		fprintf(w_res, "\n");
 	}
+	fprintf(w_res, "\n");
 	// 将FOLLOW集中的非终结符按照V中的非终结符的顺序填进去
 	for (int i = 0; i < V->len_vn; ++i) strcpy(FOLLOW_[i].vn, V->vn[i]);
 	if(argc > 2){
@@ -573,11 +583,14 @@ int main(int argc, char *argv[]){
 	printf("follow sets:\n");
 	for (int i = 0; i < V->len_vn; ++ i){
 		printf("%-2s:{ ", V->vn[i]);
+		fprintf(w_res, "%s:", V->vn[i]);
 		for (int j = 0; j < FOLLOW_[i].cnt; ++ j){
 			printf("%s", FOLLOW_[i].set[j]);
+			fprintf(w_res, "%s ", FOLLOW_[i].set[j]);
 			if (j < FOLLOW_[i].cnt - 1)
 				printf(", ");
 		}
+		fprintf(w_res, "\n");
 		printf(" }\n");
 	}
 	// printf("\n===============================================\n");
@@ -587,5 +600,6 @@ int main(int argc, char *argv[]){
 	// 		printf("%s, ", NODE_[i].set[j]);
 	// 	printf("\n");
 	// }
+	fclose(w_res);
 	return 0;
 }
