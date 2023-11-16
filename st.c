@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 // 每行最大长度
-#define maxsize 100 // in KMP
+#define maxsize 100 	// in KMP
 #define LINE_MAX 1024
 #define MAX_LEN_VN 3
 #define MAX_LEN_VT 10

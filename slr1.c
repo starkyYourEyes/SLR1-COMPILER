@@ -1,19 +1,23 @@
 // SLR1只针对有LR0分析表有冲突的进行分析，
 // 1. 移进-规约冲突
 // 2. 规约-规约冲突
+// first 集 和 follow集合要事先生成！
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#define COUNT 96    // 项目集最多数目
-#define ITEM_LEN 5
+#define COUNT 96            // 最多有多少个项目集
+#define ITEM_LEN 5          // S12, r4...
 #define MAX_LEN_PRODUCTION 20
-#define LINE_MAX 128
-#define MAX_LEN_VN 3
-#define MAX_LEN_VT 10
-#define MAX_STATUS_NEXT 20
-#define NUM_PER_SET 20
+#define LINE_MAX 128        // 读取的时候读取的每一行的最大长度
+#define MAX_NUM_VN 20       // VN的最多个数
+#define MAX_NUM_VT 40       // VT的最多个数
+#define MAX_LEN_VN 3        // VN的最大长度
+#define MAX_LEN_VT 10       // VT的最大长度
+#define MAX_STATUS_NEXT 20  // 每一个项目集通过移进而到达的新的项目集的最大个数
+#define NUM_PER_SET 20      // 每一个项目集中最多的项目数
 typedef char production[MAX_LEN_PRODUCTION];
+typedef char cpp_string[ITEM_LEN];
 int line_num;
 production lines[32];
 struct SET{                     // first集，follow集
@@ -29,7 +33,7 @@ struct next_status{
 };
 struct lr_item{
     int loc;                        // 其中的·的位置
-    production item;  // LR分析的项目
+    production item;                // LR分析的项目
     bool operated;                  // 属于某一个项目集的某个项目在移进的时候是不是已经做过了
 };
 struct lr_item_set {  
@@ -46,24 +50,24 @@ struct lr_item_set {
     bool can_reduce;                // 这个项目集是否可以规约
 };
 /*。。。。。。。。。。。。。。。。。。。。。。。。。。*/
-int UID;        // 分配给每一个项目集的唯一的编号，即项目集的status
-int CONTINUE_;   // 标记是否继续扩充项目集（项目集是否还再变化）
+int UID;            // 分配给每一个项目集的唯一的编号，即项目集的status
+int CONTINUE_;      // 标记是否继续扩充项目集（项目集是否还再变化）
 struct lr_item_set* ALL_LR_ITEM_SET[COUNT];// 一个指针数组, 用来寻找所有的 lr_item_set，记录起来
 
 struct table_item { 
     // SLR分析表的每一行。
     int status;                 // 每一行的编号，也即项目集编号
-    int action_idx;
-    char ACTION[40][ITEM_LEN];
-    int goto_idx;
-    char GOTO[20][ITEM_LEN];
+    // int action_idx;
+    cpp_string ACTION[MAX_NUM_VT];      // 假设终结符最多40个，lazy
+    // int goto_idx;
+    cpp_string GOTO[MAX_NUM_VN];        // 假设非终结符最多20个，lazy 2
 } TABLE_ITEM[COUNT];        // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
 
 struct CHARS{
 	int len_vn;				// 非终结符的个数
-	char vn[20][MAX_LEN_VN];         // 非终结符, 最长为3, S' + '\0'
+	char vn[MAX_NUM_VN][MAX_LEN_VN];// 非终结符, 最长为3, S' + '\0'
 	int len_vt;				// 终结符的个数
-	char vt[40][MAX_LEN_VT];        // 终结符
+	char vt[MAX_NUM_VT][MAX_LEN_VT];// 终结符
 } *V;
 
 bool is_vn(char ch){ 
@@ -614,6 +618,7 @@ int is_in_follow_set(char *vn, char *s){
     // printf("vn:%s\n", vn);
     int no = get_vn_no(vn);
     if (no == -1){
+        printf("find vn is:%s\n", vn);
         printf("find error!\n");
         exit(-1);
     }
@@ -683,8 +688,10 @@ void lr_table_generator(){
                     // 拿到产生式左边的终结符
                     int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[k]].item);
                     char tmp_vn[5] = {0};
-                    for (int p = 0; p <= t; ++ p) tmp_vn[p] = lines[which][p];
+                    for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[rs[k]].item[p];
                     tmp_vn[t + 1] = '\0';
+                    printf("item:%s, ", ALL_LR_ITEM_SET[i]->item_set[rs[k]].item);
+                    printf("tmp_vn:%s, ct_vt:%s\n", tmp_vn, V->vt[ts[h]]);
                     if (is_in_follow_set(tmp_vn, V->vt[ts[h]]) != -1){
                         is_error ++;
                         if (is_error >= 2){
@@ -700,20 +707,20 @@ void lr_table_generator(){
             //     printf("eeeeeee!\n");
             //     exit(-1);
             // }
-            if (num_rs == 1) { // 只有一条·到达末尾的，再其FOLLOW集里面就能规约
+            if (num_rs == 1) { // 只有一条·到达末尾的，在其FOLLOW集里面就能规约
                 // 拿到产生式左边的终结符
                 printf("look:%d, %s", i, ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 char tmp_vn[5] = {0};
-                for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[which].item[p];
+                for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[rs[0]].item[p];
                 tmp_vn[t + 1] = '\0';
                 // int no = get_vn_no(tmp_vn);
-
                 char tmp[5] = {0};
                 int no = get_production_no(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 tmp[0] = 'r';
                 itoa(no, tmp + 1, 10);
-                printf(":::%d . ", i);
+                printf(":::%d . %s . %s . ", i, tmp_vn, tmp);
+                
                 for (int j = 0; j < V->len_vt; ++ j)
                     if (is_in_follow_set(tmp_vn, V->vt[j]) != -1){
                         printf("%s -> %s, ", tmp_vn, V->vt[j]);
@@ -806,6 +813,7 @@ int main(int argc, char *argv[]){
     // printf("len:%d\n", S->cnt);
 
     shift(S);
+    read_fisrt_follow_sets();
 
     // printf("UID:%d\n", UID);
     printf("next num:%d\n", S->cnt_next_status);
@@ -838,22 +846,26 @@ int main(int argc, char *argv[]){
         }
         printf("------------------------------\n");
     }
-    read_fisrt_follow_sets();
+    
+    printf("first&follow set\n");
+    {
+        for (int i = 0; i < V->len_vn; ++ i){
+            printf("%s: ", V->vn[i]);
+            for (int j = 0; j < FIRST_[i].cnt; ++ j)
+                printf("%s, ", FIRST_[i].set[j]);
+            printf("\n");
+        }
+        printf("\n-------------------\n");
+        for (int i = 0; i < V->len_vn; ++ i){
+            printf("%s: ", V->vn[i]);
+            for (int j = 0; j < FOLLOW_[i].cnt; ++ j)
+                printf("%s, ", FOLLOW_[i].set[j]);
+            printf("\n");
+        }
+    }
 
     lr_table_generator();
-    for (int i = 0; i < V->len_vn; ++ i){
-        printf("%s: ", V->vn[i]);
-        for (int j = 0; j < FIRST_[i].cnt; ++ j)
-            printf("%s, ", FIRST_[i].set[j]);
-        printf("\n");
-    }
-    printf("\n-------------------\n");
-    for (int i = 0; i < V->len_vn; ++ i){
-        printf("%s: ", V->vn[i]);
-        for (int j = 0; j < FOLLOW_[i].cnt; ++ j)
-            printf("%s, ", FOLLOW_[i].set[j]);
-        printf("\n");
-    }
+
     {    // printf("`````````````````````````````````````\n");
         printf("+----------------------------------------------------------------------------------------------------------------------+\n");
         printf("|    |                                  ACTION                                         |              GOTO             |\n");
