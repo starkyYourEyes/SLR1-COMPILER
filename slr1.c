@@ -18,11 +18,11 @@
 #define MAX_STATUS_NEXT 20  // 每一个项目集通过移进而到达的新的项目集的最大个数
 #define NUM_PER_SET 20      // 每一个项目集中最多的项目数
 #define MAX_STACK_SIZE 128
-#define MAX_STEP 128
+#define MAX_STEP 1024       // 分析过程的最大步骤数
 typedef char production[MAX_LEN_PRODUCTION];
 typedef char cpp_string[ITEM_LEN];
-int line_num;
-production lines[32];
+int line_num;                   // 产生式的个数
+production lines[32];           // 存储所有的产生式
 struct SET{                     // first集，follow集
 	char vn[MAX_LEN_VN];	    // 非终结符的名称
 	int cnt;				    // first集中终结符的个数
@@ -31,8 +31,8 @@ struct SET{                     // first集，follow集
 	char set[20][MAX_LEN_VT]; 
 } FIRST_[20], FOLLOW_[20];
 struct next_status{
-    int status;             // 指向的下一个项目集的UID
-    char edge[MAX_LEN_VT];  // 通过那条边指向下一个项目集，即通过什么字符到达的
+    int status;                     // 指向的下一个项目集的UID
+    char edge[MAX_LEN_VT];          // 通过那条边指向下一个项目集，即通过什么字符到达的
 };
 struct lr_item{
     int loc;                        // 其中的·的位置
@@ -59,25 +59,25 @@ struct lr_item_set* ALL_LR_ITEM_SET[COUNT];// 一个指针数组, 用来寻找�
 
 struct table_item { 
     // SLR分析表的每一行。
-    int status;                 // 每一行的编号，也即项目集编号
+    int status;                         // 每一行的编号，也即项目集编号
     // int action_idx;
     cpp_string ACTION[MAX_NUM_VT];      // 假设终结符最多40个，lazy
     // int goto_idx;
     cpp_string GOTO[MAX_NUM_VN];        // 假设非终结符最多20个，lazy 2
-} TABLE_ITEM[COUNT];        // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
+} TABLE_ITEM[COUNT];                    // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
 
 struct CHARS{
-	int len_vn;				        // 非终结符的个数
-	char vn[MAX_NUM_VN][MAX_LEN_VN];// 非终结符, 最长为3, S' + '\0'
-	int len_vt;				        // 终结符的个数
-	char vt[MAX_NUM_VT][MAX_LEN_VT];// 终结符
+	int len_vn;				            // 非终结符的个数
+	char vn[MAX_NUM_VN][MAX_LEN_VN];    // 非终结符, 最长为3, S' + '\0'
+	int len_vt;				            // 终结符的个数
+	char vt[MAX_NUM_VT][MAX_LEN_VT];    // 终结符
 } *V;
 
-struct status_stack{    // 状态栈
+struct status_stack{                    // 状态栈
     int idx;
     int stack[MAX_STACK_SIZE];
 } stat_stk;
-struct char_stack{      // 符号栈
+struct char_stack{                      // 符号栈
     int idx;
     char stack[MAX_STACK_SIZE][MAX_LEN_VT];
 } char_stk;
@@ -87,23 +87,22 @@ struct char_stack{      // 符号栈
 // };
 int _STEP;
 struct analysis_item{
-    int step;                       // 步骤
-    // struct status_stack stat_stk;   // 状态栈
-    // struct char_stack char_stk;     // 符号栈
-    char str_now[MAX_LEN_VT];       // 输入串 -> 当前遇到的字符
-    char Action[ITEM_LEN];          // ACTION
-    char Goto[ITEM_LEN];            // GOTO
+    int step;                           // 步骤
+    // struct status_stack stat_stk;    // 状态栈
+    // struct char_stack char_stk;      // 符号栈
+    char str_now[MAX_LEN_VT];           // 输入串 -> 当前遇到的字符
+    char Action[ITEM_LEN];              // ACTION
+    char Goto[ITEM_LEN];                // GOTO
 } analyses[MAX_STEP];
 
-bool is_vn(char ch){ 
+bool is_vn(char ch){  // 判断字符是不是非终结符
 	// 判断字符是不是非终结符, 这里假设非终结符只有一个字母，因为S'只出现在产生式左侧，这里忽略他不计
 	for (int i = 0; i < V->len_vn; ++i)
 		if (ch == V->vn[i][0])
 			return true;
 	return false;
 }
-int get_vt_no(char* vt){
-	// 找到这个终结符的编号，
+int get_vt_no(char* vt){ // 找到这个终结符的编号，
 	// 因为终结符的 顺序都是按照V中的顺序来的，所以终结符的顺序唯一，只需要确定其编号
 	for (int i = 0; i < V->len_vt; ++ i){
 		if (strcmp(vt, V->vt[i]) == 0)
@@ -111,8 +110,7 @@ int get_vt_no(char* vt){
 	}
 	return -1;
 }
-int get_vn_no(char* vn){
-	// 找到这个非终结符的编号，
+int get_vn_no(char* vn){ // 找到这个非终结符的编号
 	// 因为非终结符的 顺序都是按照V中的顺序来的，所以非终结符的顺序唯一，只需要确定其编号
 	for (int i = 0; i < V->len_vn; ++ i)
 		if (strcmp(vn, V->vn[i]) == 0)
@@ -122,7 +120,7 @@ int get_vn_no(char* vn){
 bool is_alpha(char ch){
 	return ch <= 'z' && ch >= 'a';
 }
-char *is_prefix(char s[]){
+char *is_prefix(char s[]){ // 若*s开头的前几个字符和某一个非终结符匹配，返回这个非终结符
 	// 这里的s对应的是产生式的右边
 	/*is_prefix计算的是，某一个非终结符s，其对应的产生式 右边的直接的终结符，直接加入到其first集中
 	也可以用来判断：s这个字符串的开头是不是一个非终结符。*/
@@ -140,8 +138,7 @@ char *is_prefix(char s[]){
 	return NULL;
 }
 
-int get_vs(char *path){
-	// 获取所有的终结符和非终结符
+int get_vs(char *path){	// 获取所有的终结符和非终结符
 	FILE *fp;
 	int line_num = 0;		  // 文件行数
 	int line_len = 0;		  // 文件每行的长度
@@ -257,7 +254,7 @@ int get_vs(char *path){
 	return line_num;
 }
 
-void read_lines(char *path){
+void read_lines(char *path){ // 读取所有的产生式到数组lines中
 	FILE *fp;
 	int line_len = 0;		  // 文件每行的长度
 	char buf[LINE_MAX] = {0}; // 行数据缓存
@@ -283,19 +280,15 @@ void read_lines(char *path){
 	fclose(fp);
 }
 
-int get_production_left(char* line){
+int get_production_left(char* line){ // 找到产生式的左边的结束的位置
 	// 产生式的开头不可以有空格
-    // 找到产生式的左边的结束的位置
 	int loc = 0;
 	for(; line[loc] && line[loc] != '-'; ++ loc){};	// 找到 - 的位置
 	loc --;
 	while (loc > 0 && line[loc] == ' '){ loc --; }; // 跳过空格
-
 	return loc;
 }
-
-int get_production_right(char* line){
-	// 找到产生式的右边的开始的位置
+int get_production_right(char* line){ // 找到产生式的右边的开始的位置
 	int loc = 0;
 	for(; line[loc] && line[loc] != '>'; ++ loc){};	// 找到 > 的位置
 	loc ++;
@@ -315,7 +308,6 @@ int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几�
         // 没有重复（·的位置和字符串都不重复）的才添加进去
         if (set->item_set[j].loc == it.loc && strcmp(set->item_set[j].item, it.item) == 0)
             flag = false;
-            
     if (flag){
         set->item_set[set->cnt ++] = it;
         if (set->cnt >= NUM_PER_SET) return -1; 
@@ -323,14 +315,13 @@ int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几�
         // 超长了 
     return 1;
 }
-bool is_front_repeated(struct lr_item_set* S, char str[]){
-    // 在移进的时候是否遇到重复的字符（串
+bool is_front_repeated(struct lr_item_set* S, char str[]){ // 在移进的时候是否遇到重复的字符（串
     for (int i = 0; i < S->cnt_next_status; ++ i)
         if (strcmp(str, S->next[i].edge) == 0)  
             return true;
     return false;
 }
-bool equal_prefix(char *s, char *t){
+bool equal_prefix(char *s, char *t){ // 判断*t开始的字符串前strlen(s)个字符是不是和s相等，其中s长度已知
     // s是直到他的长度 的，所以s要放在前面
     // printf("---compares:\n");
     for (int i = 0; s[i]; ++ i)
@@ -339,8 +330,7 @@ bool equal_prefix(char *s, char *t){
     return true;
 }
 
-struct lr_item_set* init_lr_item_set(){
-    // 初始化一个lr_item_set并返回
+struct lr_item_set* init_lr_item_set(){ // 初始化一个lr_item_set并返回
     struct lr_item_set *S = (struct lr_item_set*)malloc(sizeof(struct lr_item_set));
     ALL_LR_ITEM_SET[UID] = S;   // 记录在指针数组中
     // 记得初始化值！
@@ -354,12 +344,12 @@ struct lr_item_set* init_lr_item_set(){
     memset(S->next, 0, MAX_STATUS_NEXT * (sizeof(struct next_status)));
     return S; 
 }
-void del_lr_item_set(struct lr_item_set **S){
+void del_lr_item_set(struct lr_item_set **S){ // 删除一个项目集（有重复）
     UID --;     // UID为全局变量！
     printf("%s was freed!!\n", (*S)->item_set[0].item);
     free(*S);
 }
-int is_itemset_repeated(struct lr_item_set* S){
+int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项目集
     // to be optimized , to do
     // 判断是否有一样的项目集, 即核一样，在新增加完项目集并且把核添加进去了后判断。
     // 如果有重复的，就把重复的那个的UID返回回去
@@ -391,15 +381,14 @@ int is_itemset_repeated(struct lr_item_set* S){
     // printf("true!!!!!!!!!!!!!!\n");
     return -1;
 }
-bool is_item_left(struct lr_item_set* S){
-    for (int i = 0; i < S->cnt; ++ i)
-        if (!S->item_set[i].operated)
-            return true;
-    return false;
-}
-void shift(struct lr_item_set* S);
-void expand(struct lr_item_set* S){
-    // 项目集的 核 开始扩张
+// bool is_item_left(struct lr_item_set* S){ // 判断是否已经操作过这个项目集
+//     for (int i = 0; i < S->cnt; ++ i)
+//         if (!S->item_set[i].operated)
+//             return true;
+//     return false;
+// }
+void shift(struct lr_item_set* S);  // 函数声明，方便在expand()中调用
+void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
     printf("UID:%d, cnt:%d\n", S->status, S->cnt);
     int scnt = S->cnt;  // 循环过程中，S->cnt会发生改变！！！！
     for(int i = 0; i < S->cnt; ++ i){
@@ -452,9 +441,7 @@ void expand(struct lr_item_set* S){
     //     // shift(S);
     // }
 }
-
-void shift(struct lr_item_set* S){
-    // 移进
+void shift(struct lr_item_set* S){ // 移进
     printf("shift() cnt:%d\n", S->cnt);
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
@@ -537,13 +524,12 @@ void shift(struct lr_item_set* S){
         printf("===%d, %c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
     }
 }
-/*移进-归约冲突（shift-reduce conflict）*/
-void reduce(){
-    // 规约
-}
+// /*移进-归约冲突（shift-reduce conflict）*/
+// void reduce(){
+//     // 规约
+// }
 
-void init(struct lr_item_set** S){
-    // 求初始的第一个 项目集。
+void init(struct lr_item_set** S){ // 求初始的第一个 项目集。
     UID = 0;
     CONTINUE_ = -1;
     // *S = (struct lr_item_set*)malloc(sizeof(struct lr_item_set));
@@ -567,15 +553,14 @@ void init(struct lr_item_set** S){
     for (int i = 0; i < (*S)->cnt; ++ i)
         printf("%d, %s\n", (*S)->item_set[i].loc, (*S)->item_set[i].item);
 }
-int get_production_no(char *prod){
-    // 获取产生式的编号
+int get_production_no(char *prod){ // 获取产生式的编号
     for (int i = 0; i < line_num; ++ i)
         if (strcmp(lines[i], prod) == 0)
             return i;
     return -1;
 }
 
-void read_fisrt_follow_sets(){
+void read_fisrt_follow_sets(){ // 读取文件中的first集和follow集
     for (int i = 0; i < V->len_vn; ++i) strcpy(FIRST_[i].vn, V->vn[i]);
     for (int i = 0; i < V->len_vn; ++i) strcpy(FOLLOW_[i].vn, V->vn[i]);
     FILE* fp = fopen("first-follow-set.txt", "r");
@@ -584,7 +569,6 @@ void read_fisrt_follow_sets(){
         exit(-1);
     }
     char buf[128];
-    
     int mode = 0;   // mode = 0 表示读取first集，1 表示读取follow集
     int cnt = 0;
 
@@ -634,8 +618,7 @@ void read_fisrt_follow_sets(){
 
     fclose(fp);
 }
-int is_in_follow_set(char *vn, char *s){
-    // 判断vn的follow集包不包含s
+int is_in_follow_set(char *vn, char *s){ // 判断vn的follow集包不包含s
     // printf("vn:%s\n", vn);
     int no = get_vn_no(vn);
     if (no == -1){
@@ -648,8 +631,7 @@ int is_in_follow_set(char *vn, char *s){
             return i;
     return -1;
 }
-bool is_null_unite_sets(char *v1, char *v2){
-    // 判断两个vn的follow集是不是有交集
+bool is_null_unite_sets(char *v1, char *v2){ // 判断两个vn的follow集是不是有交集
     int n1 = get_vn_no(v1), n2 = get_vn_no(v2);
     for (int i = 0; i < FOLLOW_[n1].cnt; ++ i)
         for (int j = 0; j < FOLLOW_[n2].cnt; ++ j)
@@ -658,7 +640,7 @@ bool is_null_unite_sets(char *v1, char *v2){
     return true;
 }
 
-void lr_table_generator(){
+void lr_table_generator(){ // 生成SLR1分析表
     // TABLE_ITEM是全局变量，默认初始化为0了
     memset(TABLE_ITEM, 0, COUNT * sizeof(struct table_item));
     for (int i = 0; i < V->len_vt; ++ i)
@@ -812,8 +794,8 @@ void lr_table_generator(){
         }
     }
 }
-char *get_input(char buf[]){
-    // 面临的输入一定是终结符！！！
+char *get_input(char buf[]){ // 获取分析过程中面临的输入
+    // 获取面临的输入一定是终结符！！！
     int loc = 0;
     for (; buf[loc] && buf[loc] != ','; ++ loc){};      // 找到,即（**, **）中的第二项
     for (loc ++; buf[loc] && buf[loc] == ' '; ++ loc);  // 跳过空格
@@ -824,8 +806,10 @@ char *get_input(char buf[]){
     char *s = is_prefix(buf + loc);
     return s;
 }
-char *get_next_status(int ct, char *input, int mode){
+char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中的下一个动作，S* or r**
     // 输入串里面只可能有终结符！
+    // mode == 1 表示是在S动作之后寻找下一个状态
+    // mode == 0 表示是在r动作之后寻找下一个状态
     if (mode == 1){         // S
         int in_no = get_vt_no(input);
         if (strlen(TABLE_ITEM[ct].ACTION[in_no]) == 0) {
@@ -847,7 +831,7 @@ char *get_next_status(int ct, char *input, int mode){
         exit(-1);
     }
 }
-int count_production_right_num(int line){
+int count_production_right_num(int line){ // 获取产生式右边的元素（Vn|Vt）的个数
     int res = 0;
     int loc = 0;
     for (; lines[line][loc] && lines[line][loc] != '>'; ++ loc){};
@@ -857,7 +841,6 @@ int count_production_right_num(int line){
         printf("error in count_production_right_num!\n");
         exit(-1);
     }
-    
     while (lines[line][loc]){   // 双指针
         if (is_vn(lines[line][loc])) {
             loc += 1;
@@ -879,8 +862,7 @@ int count_production_right_num(int line){
     }
     return res;
 }
-void out_stk(int mode){
-    // 打印栈内的数据 mode = 1 -> 状态栈，mode = 0 -> 符号栈
+void out_stk(int mode){ // 打印栈内的数据 mode = 1 -> 状态栈，mode = 0 -> 符号栈
     if (mode == 1) {
         for (int i = 0; i  < stat_stk.idx; ++ i){
             printf("%d", stat_stk.stack[i]);
@@ -896,14 +878,14 @@ void out_stk(int mode){
         exit(-1);
     }
 }
-void out_slr1_table_item(){  
+void out_slr1_table_item(){ // 输入分析过程中的每一步（每一行
     printf("|(%2d)| ", _STEP + 1);
     out_stk(1); printf(" | "); out_stk(0);
     printf(" | %s | ", analyses[_STEP].str_now);
     printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
 }
-void grammar_analyse(){
-    _STEP = 0;   // STEP初值为1 ！！！！
+void grammar_analyse(){ // 根据 SLR1分析表 进行语法分析
+    _STEP = 0;
     // struct analysis_item *analyse = (struct analysis_item *)malloc(sizeof(struct analysis_item));
     // memset(analyse, 0, sizeof(struct analysis_item));
     // 读入词法分析的结果并进行语法分析
@@ -929,14 +911,7 @@ void grammar_analyse(){
             printf("error in get_input()!\n");
             exit(-1);
         }
-        //  else if (strcmp(input, "#\0") == 0){
-        //     printf("syntax analyse complete! 0 errors.\n");
-        //     // how much errors ???
-        //     if (0 == feof){
-        //         printf("fgets error\n"); // 未读到文件末尾
-        //         return;
-        //     }
-        // }
+
         if (_STEP == 0){     // 第一次，进行初始化，状态初始为0，符号栈初始为 # 
             analyses[_STEP].step = _STEP;   
             stat_stk.stack[stat_stk.idx] = 0;

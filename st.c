@@ -387,7 +387,7 @@ void cal_follow(){
 			printf("error2!\n");
 			return;
 		}
-		printf("-----------------%s------------------\n", lines[i]);
+		// printf("-----------------%s------------------\n", lines[i]);
 		for (; lines[i][loc]; ++ loc){
 			if (is_vn(lines[i][loc])){
 				// 对于产生式右侧的非终结符，计算其FOLLOW集
@@ -423,13 +423,13 @@ void cal_follow(){
 						int x = get_vn_no(tmp);
 						for (int i = 0; i < FIRST_[x].cnt; ++ i)
 							if (!is_repeated(&FOLLOW_[n], FIRST_[x].set[i])){
-								printf("%s adds not repeated elements:%s\n",FOLLOW_[n].vn, FIRST_[x].set[i]);
+								// printf("%s adds not repeated elements:%s\n",FOLLOW_[n].vn, FIRST_[x].set[i]);
 								strcpy(FOLLOW_[n].set[FOLLOW_[n].cnt], FIRST_[x].set[i]);
 								FOLLOW_[n].cnt ++;
 							}
 					} else{	//如果是终结符, 直接添加
-						printf("ct is vs:%s\n", s);
-						printf("%s adds not repeated elements:%s\n",FOLLOW_[n].vn, s);
+						// printf("ct is vs:%s\n", s);
+						// printf("%s adds not repeated elements:%s\n",FOLLOW_[n].vn, s);
 						if (!is_repeated(&FOLLOW_[n], s)){
 							strcpy(FOLLOW_[n].set[FOLLOW_[n].cnt], s);
 							FOLLOW_[n].cnt ++;
@@ -506,6 +506,7 @@ int main(int argc, char *argv[]){
 	V = (struct CHARS *)malloc(sizeof(struct CHARS));
 	V->len_vn = V->len_vt = 0;
 	int line_num = get_vs(argv[1]) / 2;
+
 	printf("line_num = %d\n", line_num);
 	printf("%d Vns: \n", V->len_vn);
 	for (int i = 0; i < V->len_vn; ++i){
@@ -518,6 +519,7 @@ int main(int argc, char *argv[]){
 		printf("%s, ", V->vt[i]);
 		if (i < V->len_vn - 1) printf(", ");
 	}
+
 	printf("\n");
 	read_lines(argv[1]);
 
@@ -577,9 +579,12 @@ int main(int argc, char *argv[]){
 	// }
 	// 将FOLLOW集中的非终结符按照V中的非终结符的顺序填进去
 	for (int i = 0; i < V->len_vn; ++i) strcpy(NODE_[i].vn, V->vn[i]);
-	printf("\n===============================================\n");
+	// printf("\n===============================================\n");
 	cal_follow();
-	printf("\n===============================================\n");
+	// printf("\n===============================================\n");
+
+
+	
 	printf("follow sets:\n");
 	for (int i = 0; i < V->len_vn; ++ i){
 		printf("%-2s:{ ", V->vn[i]);
