@@ -964,12 +964,14 @@ void grammar_analyse(){
             // printf("%s\n", next_st);
             strcpy(analyses[_STEP].Action, next_st);
             stat_stk.idx ++;
+
             {
-                printf("| (%d) |");
+                printf("| (%2d) | ", _STEP + 1);
                 out_stk(1); printf(" | "); out_stk(0);
                 printf(" | %s | ", analyses[_STEP].str_now);
                 printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
             }
+
             // atoi
             stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
             strcpy(char_stk.stack[char_stk.idx ++], input);
