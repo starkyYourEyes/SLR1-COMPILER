@@ -1,6 +1,8 @@
 begin
-	begin
-		wy:=(b+d)*c
-			end;
-	if not(a>=8 and b!=7) then a:=-b
+    z:=2;
+    x:=1;
+    y:=2;
+    if x == 1
+    then y:=3;
+    z:=2;
 end#

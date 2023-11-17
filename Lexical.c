@@ -149,7 +149,7 @@ int main(int argc, char *argv[]){
         line_num ++;
         for(; buf[loc]; loc ++){
             char ch = buf[loc];
-            if (ch == ' ' || ch == '\t' || ch == '\n') continue;
+            if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' ) continue;
             scanner(buf, &loc);
         }
     }

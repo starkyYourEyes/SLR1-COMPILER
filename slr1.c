@@ -829,7 +829,7 @@ char *get_next_status(int ct, char *input, int mode){
     if (mode == 1){         // S
         int in_no = get_vt_no(input);
         if (strlen(TABLE_ITEM[ct].ACTION[in_no]) == 0) {
-            printf("find action:%d, %s\n", ct, input);
+            printf("an error occured when finding S%d, to:%s\n", ct, input);
             printf("syntax error!%s", input);
             exit(-1);
         }
@@ -837,7 +837,7 @@ char *get_next_status(int ct, char *input, int mode){
     } else if (mode == 0) { // r
         int in_no = get_vn_no(input);
                 if (strlen(TABLE_ITEM[ct].GOTO[in_no]) == 0) {
-            printf("find goto:%d, %s\n", ct, input);
+            printf("an error occured when finding GOTO %d, to:%s\n", ct, input);
             printf("syntax error!%s", input);
             exit(-1);
         }
@@ -896,6 +896,12 @@ void out_stk(int mode){
         exit(-1);
     }
 }
+void out_slr1_table_item(){  
+    printf("|(%2d)| ", _STEP + 1);
+    out_stk(1); printf(" | "); out_stk(0);
+    printf(" | %s | ", analyses[_STEP].str_now);
+    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+}
 void grammar_analyse(){
     _STEP = 0;   // STEP初值为1 ！！！！
     // struct analysis_item *analyse = (struct analysis_item *)malloc(sizeof(struct analysis_item));
@@ -918,7 +924,7 @@ void grammar_analyse(){
 			buf[line_len - 1] = '\0', line_len--;
         if (0 == line_len) continue;    // 空行
         input = get_input(buf);   // 当前面临的输入
-        printf("get_input res:%s\n", input);
+        // printf("get_input res:%s\n", input);
         if (input == NULL) {
             printf("error in get_input()!\n");
             exit(-1);
@@ -941,48 +947,33 @@ void grammar_analyse(){
             // printf("%s\n", next_st);
             strcpy(analyses[_STEP].Action, next_st);
             stat_stk.idx ++;
-            {
-                printf("|(%2d)| ", _STEP + 1);
-                out_stk(1); printf(" | "); out_stk(0);
-                printf(" | %s | ", analyses[_STEP].str_now);
-                printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-            }
+            out_slr1_table_item();
             stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
             strcpy(char_stk.stack[char_stk.idx ++], input);
             _STEP ++;    // 遇到非终结符，直接_STEP + 1 
         } else {
             // 取  状态栈  栈顶元素
-            out_stk(0);
-            printf("---current input:%s\n", input);
-                //             {
-                //     printf("|(%2d)| ", _STEP + 1);
-                //     out_stk(1); printf(" | "); out_stk(0);
-                //     printf(" | %s | ", analyses[_STEP].str_now);
-                //     printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-                // }
+            // out_stk(0);
+            // printf("---current input:%s\n", input);
+                //             out_slr1_table_item();
             int stk_idx = stat_stk.idx - 1;
             int top = stat_stk.stack[stk_idx];
-            printf("top:%d\n", top);
+            // printf("top:%d\n", top);
             next_st = get_next_status(top, input, 1);
-            printf("next_st:%s\n", next_st);
+            // printf("next_st:%s\n", next_st);
 ACTION_S:
             if (next_st[0] == 'S') {
                 // 执行ACTION动作
                 analyses[_STEP].step = _STEP;
                 strcpy(analyses[_STEP].str_now, input);
                 strcpy(analyses[_STEP].Action, next_st);
-                {
-                    printf("|(%2d)| ", _STEP + 1);
-                    out_stk(1); printf(" | "); out_stk(0);
-                    printf(" | %s | ", analyses[_STEP].str_now);
-                    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-                }
+                out_slr1_table_item();
                 stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
                 strcpy(char_stk.stack[char_stk.idx ++], input);
                 _STEP ++;
             } else if (next_st[0] == 'r') {
                 while (next_st[0] == 'r'){
-                    printf("else next_st:%s\n", next_st);
+                    // printf("else next_st:%s\n", next_st);
                     strcpy(analyses[_STEP].Action, next_st);    // record
                     strcpy(analyses[_STEP].str_now, input); 
                     int line = atoi(next_st + 1);               // 第几条产生式
@@ -992,15 +983,10 @@ ACTION_S:
                     tmp[0] = lines[line][left], tmp[1] = '\0';
                     int top = stat_stk.stack[stat_stk.idx - num - 1];
                     next_st = get_next_status(top, tmp, 0);   // 查GOTO表
-                    printf("next_St:%s\n", next_st);
+                    // printf("next_St:%s\n", next_st);
                     strcpy(analyses[_STEP].Goto, next_st);
 
-                    {
-                        printf("|(%2d)| ", _STEP + 1);
-                        out_stk(1); printf(" | "); out_stk(0);
-                        printf(" | %s | ", analyses[_STEP].str_now);
-                        printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-                    }
+                    out_slr1_table_item();
                   
                     stat_stk.idx -= num;// 出栈！
                     char_stk.idx -= num;// 出栈！
@@ -1008,15 +994,15 @@ ACTION_S:
                     strcpy(char_stk.stack[char_stk.idx ++], tmp);
                     strcpy(analyses[_STEP].str_now, input);  
                     top = stat_stk.stack[stat_stk.idx - 1];
-                    printf("top:%d, tmp:%s, ", top, tmp);
+                    // printf("top:%d, tmp:%s, ", top, tmp);
                     next_st = get_next_status(top, tmp, 0);   // 查GOTO表
-                    printf("next_St:%s\n", next_st);
+                    // printf("next_St:%s\n", next_st);
                     strcpy(analyses[_STEP].Goto, next_st);
                     stat_stk.stack[stat_stk.idx ++] = atoi(next_st);
                     
-                    printf("stk top:%d, input:%s\n", stat_stk.stack[stat_stk.idx - 1], input);
+                    // printf("stk top:%d, input:%s\n", stat_stk.stack[stat_stk.idx - 1], input);
                     next_st = get_next_status(stat_stk.stack[stat_stk.idx - 1], input, 1);
-                    printf("sss:next_St:%s\n", next_st);
+                    // printf("sss:next_St:%s\n", next_st);
 
                     _STEP ++;
                 }
@@ -1025,12 +1011,7 @@ ACTION_S:
                 } else if (next_st[0] == 'a') { // 规约之后可以接收了！
                     // 接受！
                     strcpy(analyses[_STEP].Action, "acc\0");
-                    {
-                        printf("|(%2d)| ", _STEP + 1);
-                        out_stk(1); printf(" | "); out_stk(0);
-                        printf(" | %s | ", input);
-                        printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-                    }
+                    out_slr1_table_item();
                     printf("accepted!\n");
                     
                 }
@@ -1038,12 +1019,7 @@ ACTION_S:
             //     // 接受！
                 printf("accepted!%s\n", analyses[_STEP].Action);
                 strcpy(analyses[_STEP].Action, "acc\0");
-                {
-                    printf("|(%2d)| ", _STEP + 1);
-                    out_stk(1); printf(" | "); out_stk(0);
-                    printf(" | %s | ", input);
-                    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-                }
+                out_slr1_table_item();
             } else {
                 printf("unexpected status!\n");
                 exit(-1);
@@ -1112,7 +1088,8 @@ int main(int argc, char *argv[]){
         }
         printf("------------------------------\n");
     }
-    
+    fclose(fp);
+
     printf("first&follow set\n");
     {
         for (int i = 0; i < V->len_vn; ++ i){
@@ -1257,7 +1234,6 @@ int main(int argc, char *argv[]){
     //     fclose(fff);
     // }
 
-    fclose(fp);
-    
+
     return 0;
 }

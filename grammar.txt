@@ -1,6 +1,6 @@
 S'->S
 S->CS 
-S->begin L end 
+S->begin K end 
 S->A
 C->if B then
 L->S
@@ -9,6 +9,7 @@ K->L;
 A->id:=E
 E->E+E
 E->E*E
+E->E/E
 E->-E
 E->(E)
 E->id
