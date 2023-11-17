@@ -575,52 +575,6 @@ int get_production_no(char *prod){
     return -1;
 }
 
-int **r_action(){
-    int **Action=(int **)malloc(UID * sizeof(int*));
-    for (int i = 0; i < UID; i++) 
-        Action[i] = (int *)malloc(V->len_vt * sizeof(int));
-    for(int i = 0; i < UID; i ++) {
-        printf("action: %d \n",i);
-        for (int j = 0; j < V->len_vt; ++ j) { 
-            if (TABLE_ITEM[i].ACTION[j][0] == 'S')   
-                Action[i][j] = atoi(TABLE_ITEM[i].ACTION[j] + 1);
-            else if (TABLE_ITEM[i].ACTION[j][0] == 'a')    
-                Action[i][j] = UID; //获取数字部分， acc
-            else if(TABLE_ITEM[i].ACTION[j][0]=='r')    
-                Action[i][j] = 100 * (atoi(TABLE_ITEM[i].ACTION[j] + 1));
-            else if(strlen(TABLE_ITEM[i].ACTION[j]) == 0)
-                Action[i][j] = -1;
-            else {
-                printf("error in r_action");
-                exit(-1);
-            }
-            printf("%d ",Action[i][j]);
-        }
-        printf("\n");
-    }
-    return Action;
-}
-int **r_goto() {
-    //分配空间
-    int **Goto=(int **)malloc(UID * sizeof(int*));
-    for (int i = 0; i < UID; i++) Goto[i] = (int *)malloc(V->len_vn * sizeof(int));
-    for(int i = 0; i < UID; i ++) {
-        printf("goto: %d \n", i);
-        for (int j = 0; j < V->len_vn; ++j) {
-            if(strlen(TABLE_ITEM[i].GOTO[j]) != 0) {
-                Goto[i][j] = atoi(TABLE_ITEM[i].GOTO[j]);   //获取数字部分
-                printf("%d ", Goto[i][j]);
-                continue;
-            } else {   
-                Goto[i][j] = -1;
-                printf("%d ",Goto[i][j]);
-            } 
-        }
-        printf("\n");
-    }
-    return Goto;
-}
-
 void read_fisrt_follow_sets(){
     for (int i = 0; i < V->len_vn; ++i) strcpy(FIRST_[i].vn, V->vn[i]);
     for (int i = 0; i < V->len_vn; ++i) strcpy(FOLLOW_[i].vn, V->vn[i]);
@@ -874,9 +828,19 @@ char *get_next_status(int ct, char *input, int mode){
     // 输入串里面只可能有终结符！
     if (mode == 1){         // S
         int in_no = get_vt_no(input);
+        if (strlen(TABLE_ITEM[ct].ACTION[in_no]) == 0) {
+            printf("find action:%d, %s\n", ct, input);
+            printf("syntax error!%s", input);
+            exit(-1);
+        }
         return TABLE_ITEM[ct].ACTION[in_no];
     } else if (mode == 0) { // r
         int in_no = get_vn_no(input);
+                if (strlen(TABLE_ITEM[ct].GOTO[in_no]) == 0) {
+            printf("find goto:%d, %s\n", ct, input);
+            printf("syntax error!%s", input);
+            exit(-1);
+        }
         return TABLE_ITEM[ct].GOTO[in_no];
     } else {                // error
         printf("argument mode error!\n");
@@ -920,7 +884,7 @@ void out_stk(int mode){
     if (mode == 1) {
         for (int i = 0; i  < stat_stk.idx; ++ i){
             printf("%d", stat_stk.stack[i]);
-            if (i < stat_stk.idx - 1) printf(" ");
+            if (i < stat_stk.idx - 1) printf(".");
         }
     } else if (mode == 0) {
         for (int i = 0; i < char_stk.idx; ++ i){
@@ -943,17 +907,30 @@ void grammar_analyse(){
         exit(-1);
     }
     char buf[LINE_MAX];
+    // int debug = 0;
+    char *input;
+    char *next_st;                  // 下一个状态
     while (fgets(buf, LINE_MAX, lex_reader)){
+        // if (debug ++ == 19) return;
 		int line_len = strlen(buf);
 		// 排除换行符‘\n’ windos文本排除回车符'\r', 空格' '
 		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1])
 			buf[line_len - 1] = '\0', line_len--;
-        if (0 == line_len) continue;    //空行
-        char *input = get_input(buf);   // 当前面临的输入
+        if (0 == line_len) continue;    // 空行
+        input = get_input(buf);   // 当前面临的输入
+        printf("get_input res:%s\n", input);
         if (input == NULL) {
-            printf("error in get_input!\n");
+            printf("error in get_input()!\n");
             exit(-1);
         }
+        //  else if (strcmp(input, "#\0") == 0){
+        //     printf("syntax analyse complete! 0 errors.\n");
+        //     // how much errors ???
+        //     if (0 == feof){
+        //         printf("fgets error\n"); // 未读到文件末尾
+        //         return;
+        //     }
+        // }
         if (_STEP == 0){     // 第一次，进行初始化，状态初始为0，符号栈初始为 # 
             analyses[_STEP].step = _STEP;   
             stat_stk.stack[stat_stk.idx] = 0;
@@ -964,59 +941,116 @@ void grammar_analyse(){
             // printf("%s\n", next_st);
             strcpy(analyses[_STEP].Action, next_st);
             stat_stk.idx ++;
-
             {
-                printf("| (%2d) | ", _STEP + 1);
+                printf("|(%2d)| ", _STEP + 1);
                 out_stk(1); printf(" | "); out_stk(0);
                 printf(" | %s | ", analyses[_STEP].str_now);
                 printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
             }
-
-            // atoi
             stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
             strcpy(char_stk.stack[char_stk.idx ++], input);
             _STEP ++;    // 遇到非终结符，直接_STEP + 1 
         } else {
-            // // 取  状态栈  栈顶元素
-            // int stk_idx = analyses[_STEP].stat_stk.idx - 1;
-            // char *top = analyses[_STEP].stat_stk.stack[stk_idx];
-            // printf("%s\n", top);
-            // char *next_st = get_next_status(top, input, 1);
-            // if (next_st[0] == 'S') {
-            //     // // 执行ACTION动作
-            //     // analyses[_STEP].step = _STEP;
-            //     // strcpy(analyses[_STEP].stat_stk.stack[analyses[_STEP].stat_stk.idx ++], next_st);
-            //     // strcpy(analyses[_STEP].char_stk.stack[analyses[_STEP].char_stk.idx ++], input);
-            //     // strcpy(analyses[_STEP].str_now, input);
-            //     // strcpy(analyses[_STEP].Action, next_st);
-            //     // _STEP ++;
-            // } else if (next_st[0] == 'r') {
-            //     // strcpy(analyses[_STEP].Action, next_st);
-            //     // int line = atoi(next_st + 1);       // 第几条产生式
-            //     // int num = count_production_right_num(line);
-            //     // // 出栈！
-            //     // analyses[_STEP].stat_stk.idx -= num;
-            //     // analyses[_STEP].char_stk.idx -= num;
-            //     // int left = get_production_left(lines[line]);
-            //     // char tmp[2] = {0};
-            //     // tmp[0] = lines[line][left], tmp[1] = '\0';
-            //     // strcpy(analyses[_STEP].char_stk.stack[analyses[_STEP].char_stk.idx ++], tmp);
+            // 取  状态栈  栈顶元素
+            out_stk(0);
+            printf("---current input:%s\n", input);
+                //             {
+                //     printf("|(%2d)| ", _STEP + 1);
+                //     out_stk(1); printf(" | "); out_stk(0);
+                //     printf(" | %s | ", analyses[_STEP].str_now);
+                //     printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+                // }
+            int stk_idx = stat_stk.idx - 1;
+            int top = stat_stk.stack[stk_idx];
+            printf("top:%d\n", top);
+            next_st = get_next_status(top, input, 1);
+            printf("next_st:%s\n", next_st);
+ACTION_S:
+            if (next_st[0] == 'S') {
+                // 执行ACTION动作
+                analyses[_STEP].step = _STEP;
+                strcpy(analyses[_STEP].str_now, input);
+                strcpy(analyses[_STEP].Action, next_st);
+                {
+                    printf("|(%2d)| ", _STEP + 1);
+                    out_stk(1); printf(" | "); out_stk(0);
+                    printf(" | %s | ", analyses[_STEP].str_now);
+                    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+                }
+                stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
+                strcpy(char_stk.stack[char_stk.idx ++], input);
+                _STEP ++;
+            } else if (next_st[0] == 'r') {
+                while (next_st[0] == 'r'){
+                    printf("else next_st:%s\n", next_st);
+                    strcpy(analyses[_STEP].Action, next_st);    // record
+                    strcpy(analyses[_STEP].str_now, input); 
+                    int line = atoi(next_st + 1);               // 第几条产生式
+                    int num = count_production_right_num(line); // 产生式右边元素的数目
+                    int left = get_production_left(lines[line]);
+                    char tmp[2] = {0};  // 规约得到的非终结符
+                    tmp[0] = lines[line][left], tmp[1] = '\0';
+                    int top = stat_stk.stack[stat_stk.idx - num - 1];
+                    next_st = get_next_status(top, tmp, 0);   // 查GOTO表
+                    printf("next_St:%s\n", next_st);
+                    strcpy(analyses[_STEP].Goto, next_st);
 
-            //     // int stk_idx = analyses[_STEP].stat_stk.idx - 1;
-            //     // char *top = analyses[_STEP].stat_stk.stack[stk_idx];
-            //     // char *next_st = get_next_status(top, tmp, 0);
-            //     // strcpy(analyses[_STEP].Goto, next_st);
-            //     // stack不应放在结构体里面！！！！！！
-            //     // stack不应放在结构体里面！！！！！！
+                    {
+                        printf("|(%2d)| ", _STEP + 1);
+                        out_stk(1); printf(" | "); out_stk(0);
+                        printf(" | %s | ", analyses[_STEP].str_now);
+                        printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+                    }
+                  
+                    stat_stk.idx -= num;// 出栈！
+                    char_stk.idx -= num;// 出栈！
 
-            // } else if (next_st[0] == 'a') {
+                    strcpy(char_stk.stack[char_stk.idx ++], tmp);
+                    strcpy(analyses[_STEP].str_now, input);  
+                    top = stat_stk.stack[stat_stk.idx - 1];
+                    printf("top:%d, tmp:%s, ", top, tmp);
+                    next_st = get_next_status(top, tmp, 0);   // 查GOTO表
+                    printf("next_St:%s\n", next_st);
+                    strcpy(analyses[_STEP].Goto, next_st);
+                    stat_stk.stack[stat_stk.idx ++] = atoi(next_st);
+                    
+                    printf("stk top:%d, input:%s\n", stat_stk.stack[stat_stk.idx - 1], input);
+                    next_st = get_next_status(stat_stk.stack[stat_stk.idx - 1], input, 1);
+                    printf("sss:next_St:%s\n", next_st);
+
+                    _STEP ++;
+                }
+                if (next_st[0] == 'S') {
+                    goto ACTION_S;
+                } else if (next_st[0] == 'a') { // 规约之后可以接收了！
+                    // 接受！
+                    strcpy(analyses[_STEP].Action, "acc\0");
+                    {
+                        printf("|(%2d)| ", _STEP + 1);
+                        out_stk(1); printf(" | "); out_stk(0);
+                        printf(" | %s | ", input);
+                        printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+                    }
+                    printf("accepted!\n");
+                    
+                }
+            } else if (next_st[0] == 'a') {     // 判断是不是acc, 也许没用，因为接受都是在规约之后
             //     // 接受！
-
-            // } else {
-
-            // }
+                printf("accepted!%s\n", analyses[_STEP].Action);
+                strcpy(analyses[_STEP].Action, "acc\0");
+                {
+                    printf("|(%2d)| ", _STEP + 1);
+                    out_stk(1); printf(" | "); out_stk(0);
+                    printf(" | %s | ", input);
+                    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+                }
+            } else {
+                printf("unexpected status!\n");
+                exit(-1);
+            }
         }
 	}
+
 	if (0 == feof){
 		printf("fgets error\n"); // 未读到文件末尾
 		return;

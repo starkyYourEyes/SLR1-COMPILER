@@ -20,6 +20,54 @@ struct next_status{
     int status;             // 指向的下一个项目集的UID
     char edge[MAX_LEN_VT];  // 通过那条边指向下一个项目集，即通过什么字符到达的
 };
+
+
+// int **r_action(){
+//     int **Action=(int **)malloc(UID * sizeof(int*));
+//     for (int i = 0; i < UID; i++) 
+//         Action[i] = (int *)malloc(V->len_vt * sizeof(int));
+//     for(int i = 0; i < UID; i ++) {
+//         printf("action: %d \n",i);
+//         for (int j = 0; j < V->len_vt; ++ j) { 
+//             if (TABLE_ITEM[i].ACTION[j][0] == 'S')   
+//                 Action[i][j] = atoi(TABLE_ITEM[i].ACTION[j] + 1);
+//             else if (TABLE_ITEM[i].ACTION[j][0] == 'a')    
+//                 Action[i][j] = UID; //获取数字部分， acc
+//             else if(TABLE_ITEM[i].ACTION[j][0]=='r')    
+//                 Action[i][j] = 100 * (atoi(TABLE_ITEM[i].ACTION[j] + 1));
+//             else if(strlen(TABLE_ITEM[i].ACTION[j]) == 0)
+//                 Action[i][j] = -1;
+//             else {
+//                 printf("error in r_action");
+//                 exit(-1);
+//             }
+//             printf("%d ",Action[i][j]);
+//         }
+//         printf("\n");
+//     }
+//     return Action;
+// }
+// int **r_goto() {
+//     //分配空间
+//     int **Goto=(int **)malloc(UID * sizeof(int*));
+//     for (int i = 0; i < UID; i++) Goto[i] = (int *)malloc(V->len_vn * sizeof(int));
+//     for(int i = 0; i < UID; i ++) {
+//         printf("goto: %d \n", i);
+//         for (int j = 0; j < V->len_vn; ++j) {
+//             if(strlen(TABLE_ITEM[i].GOTO[j]) != 0) {
+//                 Goto[i][j] = atoi(TABLE_ITEM[i].GOTO[j]);   //获取数字部分
+//                 printf("%d ", Goto[i][j]);
+//                 continue;
+//             } else {   
+//                 Goto[i][j] = -1;
+//                 printf("%d ",Goto[i][j]);
+//             } 
+//         }
+//         printf("\n");
+//     }
+//     return Goto;
+// }
+
 struct lr_item{
     int loc;                        // 其中的·的位置
     production item;  // LR分析的项目

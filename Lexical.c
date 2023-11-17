@@ -127,6 +127,9 @@ void scanner(char *s, int *loc){
             printf("(%c, ))\n", s[*loc]);
             fprintf(fp_res, "(%c, ))\n", s[*loc]);
             break;
+        case'#':
+            printf("(%c, #)\n", s[*loc]);
+            fprintf(fp_res, "(%c, #)\n", s[*loc]);
         default:
             printf("line %d:%d  unexpected character '%c'", line_num, *loc, s[*loc]);
             exit(-1);
@@ -146,7 +149,7 @@ int main(int argc, char *argv[]){
         line_num ++;
         for(; buf[loc]; loc ++){
             char ch = buf[loc];
-            if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '#') continue;
+            if (ch == ' ' || ch == '\t' || ch == '\n') continue;
             scanner(buf, &loc);
         }
     }
