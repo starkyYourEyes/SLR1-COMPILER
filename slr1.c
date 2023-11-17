@@ -85,7 +85,8 @@ struct char_stack{                      // 符号栈
 //     int type;               // type = 1 -> 非终结符
 //     char *input[ITEM_LEN];  // type = 0-> 终结符
 // };
-int _STEP;
+int _STEP;                              // 分析过程中的每一行的编号（步骤
+int current_line;                       // 语法分析正在进行分析的行号
 struct analysis_item{
     int step;                           // 步骤
     // struct status_stack stat_stk;    // 状态栈
@@ -794,6 +795,19 @@ void lr_table_generator(){ // 生成SLR1分析表
         }
     }
 }
+int get_current_line(char buf[]){ // 获取正在进行分析的行号。
+    int loc = 0, res = 0;
+    for (; buf[loc] && buf[loc] != ','; ++ loc);
+    for (++ loc; buf[loc] && buf[loc] != ','; ++ loc);  // 找到第二个逗号的位置
+    for (loc ++; buf[loc] && buf[loc] == ' '; ++ loc);  // 跳过空格
+    if (buf[loc] < '0' || buf[loc] > '9') {
+        printf("error in get_current_line()!\n");
+        exit(-1);
+    }
+    for (; buf[loc] && (buf[loc] >= '0' && buf[loc] <= '9'); ++ loc)
+        res = 10 * res + (buf[loc] - '0');
+    return res;
+}
 char *get_input(char buf[]){ // 获取分析过程中面临的输入
     // 获取面临的输入一定是终结符！！！
     int loc = 0;
@@ -813,7 +827,7 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
     if (mode == 1){         // S
         int in_no = get_vt_no(input);
         if (strlen(TABLE_ITEM[ct].ACTION[in_no]) == 0) {
-            printf("an error occured when finding S%d, to:%s\n", ct, input);
+            printf("line %d:an error occured when finding S%d, to:%s\n", current_line, ct, input);
             printf("syntax error!%s", input);
             exit(-1);
         }
@@ -821,7 +835,7 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
     } else if (mode == 0) { // r
         int in_no = get_vn_no(input);
                 if (strlen(TABLE_ITEM[ct].GOTO[in_no]) == 0) {
-            printf("an error occured when finding GOTO %d, to:%s\n", ct, input);
+            printf("line %d:an error occured when finding GOTO %d, to:%s\n", current_line, ct, input);
             printf("syntax error!%s", input);
             exit(-1);
         }
@@ -831,7 +845,8 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
         exit(-1);
     }
 }
-int count_production_right_num(int line){ // 获取产生式右边的元素（Vn|Vt）的个数
+int count_production_right_num(int line){ // 获取产生式右边的元素（Vn|Vt）的个数】
+    // line表示第几个产生式，即lines中的编号
     int res = 0;
     int loc = 0;
     for (; lines[line][loc] && lines[line][loc] != '>'; ++ loc){};
@@ -906,6 +921,7 @@ void grammar_analyse(){ // 根据 SLR1分析表 进行语法分析
 			buf[line_len - 1] = '\0', line_len--;
         if (0 == line_len) continue;    // 空行
         input = get_input(buf);   // 当前面临的输入
+        current_line = get_current_line(buf);
         // printf("get_input res:%s\n", input);
         if (input == NULL) {
             printf("error in get_input()!\n");

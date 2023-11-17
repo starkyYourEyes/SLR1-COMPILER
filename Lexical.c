@@ -38,7 +38,7 @@ bool is_identify_repeated(char *s){
             return true;
     return false;
 }
-void scanner(char *s, int *loc){
+void scanner(char *s, int *loc, int line){
     if (is_alpha(s[*loc]) || s[*loc] == '_'){     // 如果读取的字符是字母
         // 如果以字母开头，不是关键字就是标识符
         buffer[idx ++] = s[*loc];	        //将该字母添加到临时字符串
@@ -48,13 +48,13 @@ void scanner(char *s, int *loc){
         buffer[idx] = '\0';                 // 当前读取截止
         // printf("buffer:%s\n", buffer);
         if (is_keyword(buffer)){
-            printf("(%s, %s)\n", buffer, buffer);	        //将结果以二元组的形式输出到屏幕
-            fprintf(fp_res, "(%s, %s)\n", buffer, buffer);	//将字符保存到输出文件中
+            printf("(%s, %s, %d)\n", buffer, buffer, line);	        //将结果以二元组的形式输出到屏幕
+            fprintf(fp_res, "(%s, %s, %d)\n", buffer, buffer, line);	//将字符保存到输出文件中
         } else {    // 这里把扫描到的东西全部都添加到输出，不考虑重复！词法分析本该如此
             if(!is_identify_repeated(buffer))
                 strcpy(ID.identify[ID.cnt ++], buffer);
-            printf("(%s, id)\n", buffer);
-            fprintf(fp_res, "(%s, id)\n", buffer);
+            printf("(%s, id, %d)\n", buffer, line);
+            fprintf(fp_res, "(%s, id, %d)\n", buffer, line);
         }
         // memset(buffer, 0, sizeof(buffer));   // 清空buffer
         idx = 0;                                // idx指针清零
@@ -65,28 +65,28 @@ void scanner(char *s, int *loc){
         while (is_digit(s[*loc]))	            // 如果下一位还是数字
             buffer[idx ++] = s[*loc], ++ *loc;
         buffer[idx] = '\0';                     // 当前读取截止
-        printf("(%s, id)\n", buffer);
-        fprintf(fp_res, "(%s, id)\n", buffer);
+        printf("(%s, id, %d)\n", buffer, line);
+        fprintf(fp_res, "(%s, id, %d)\n", buffer, line);
         idx = 0;                                // idx指针清零
         -- *loc;	                            // 回退一个字符
     } else {   // 其他字符
         switch (s[*loc]){
         // 算术运算符
         case'+':
-            printf("(%c, +)\n", s[*loc]);
-            fprintf(fp_res, "(%c, +)\n", s[*loc]);
+            printf("(%c, +, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, +, %d)\n", s[*loc], line);
             break;
         case'-':
-            printf("(%c, -)\n", s[*loc]);
-            fprintf(fp_res, "(%c, -)\n", s[*loc]);
+            printf("(%c, -, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, -, %d)\n", s[*loc], line);
             break;
         case'*':
-            printf("(%c, *)\n", s[*loc]);
-            fprintf(fp_res, "(%c, *)\n", s[*loc]);
+            printf("(%c, *, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, *, %d)\n", s[*loc], line);
             break;
         case'/':
-            printf("(%c, /)\n", s[*loc]);
-            fprintf(fp_res, "(%c, /)\n", s[*loc]);
+            printf("(%c, /, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, /, %d)\n", s[*loc], line);
             break;
         //关系运算符
         case'<':
@@ -96,40 +96,41 @@ void scanner(char *s, int *loc){
             ++ *loc;
             if (s[*loc] == '='){	
                 //单引号：字符；双引号：字符串
-                printf("(%c=, rop)\n", s[*loc]);
-                fprintf(fp_res, "(%c=, rop)\n", s[*loc]);
+                printf("(%c=, rop, %d)\n", s[*loc], line);
+                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
             } else {
                 -- *loc;	// 回退一个字符
-                printf("(%c, rop)\n", s[*loc]);
-                fprintf(fp_res, "(%c, rop)\n", s[*loc]);
+                printf("(%c, rop, %d)\n", s[*loc], line);
+                fprintf(fp_res, "(%c, rop, %d)\n", s[*loc], line);
             }
             break;
         //分界符
         case':':
             ++ *loc;
             if (s[*loc] == '=') {	 //单引号：字符；双引号：字符串
-                printf("(:=, :=)\n");
-                fprintf(fp_res, "(:=, :=)\n");
+                printf("(:=, :=, %d)\n", line);
+                fprintf(fp_res, "(:=, :=, %d)\n", line);
             } else {
                 printf("line %d:%d  unexpected character '%c'", line_num, *loc, s[*loc]);
                 exit(-1);
             }
             break;
         case';':
-            printf("(%c, ;)\n", s[*loc]);
-            fprintf(fp_res, "(%c, ;)\n", s[*loc]);
+            printf("(%c, ;, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, ;, %d)\n", s[*loc], line);
             break;
         case'(':
-            printf("(%c, ()\n", s[*loc]);
-            fprintf(fp_res, "(%c, ()\n", s[*loc]);
+            printf("(%c, (, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, (, %d)\n", s[*loc], line);
             break;
         case')':
-            printf("(%c, ))\n", s[*loc]);
-            fprintf(fp_res, "(%c, ))\n", s[*loc]);
+            printf("(%c, ), %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, ), %d)\n", s[*loc], line);
             break;
         case'#':
-            printf("(%c, #)\n", s[*loc]);
-            fprintf(fp_res, "(%c, #)\n", s[*loc]);
+            printf("(%c, #, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, #, %d)\n", s[*loc], line);
+            break;
         default:
             printf("line %d:%d  unexpected character '%c'", line_num, *loc, s[*loc]);
             exit(-1);
@@ -144,14 +145,16 @@ int main(int argc, char *argv[]){
 		printf("open %s failed.\n", argv[1]);
 		return -1;
 	}
+    int line_no = 0;
     while (fgets(buf, LINE_MAX, fp)){   // 逐行
         int len = strlen(buf), loc = 0;
         line_num ++;
         for(; buf[loc]; loc ++){
             char ch = buf[loc];
             if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' ) continue;
-            scanner(buf, &loc);
+            scanner(buf, &loc, line_no);
         }
+        line_no ++;
     }
     if (0 == feof){
         printf("fgets error\n"); // 未读到文件末尾
