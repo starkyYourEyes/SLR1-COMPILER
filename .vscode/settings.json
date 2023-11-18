@@ -22,6 +22,10 @@
         "stdio.h": "c",
         "iostream": "cpp",
         "stdio_s.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "first_follow.h": "c",
+        "slr1.h": "c",
+        "production.h": "c",
+        "utils.h": "c"
     }
 }

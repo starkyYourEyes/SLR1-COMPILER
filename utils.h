@@ -1,9 +1,7 @@
 #ifndef _UTILS
 #define _UTILS
 #include <stdio.h>
-#define ID_MAX_LEN 32
-#define ID_MAX_NUM 20
-#define LINE_MAX 1024
+#include <stdbool.h>
 bool is_digit(char ch){
     return ch >= '0' && ch <= '9';
 }

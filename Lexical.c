@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "lexical.h"
 
+
 int main(int argc, char *argv[]){
     FILE* fp;           // 读取文件
     fp = fopen(argv[1], "r");
@@ -33,4 +34,6 @@ int main(int argc, char *argv[]){
 	fclose(fp);
     fclose(fp_res);
     return 0;
+
+    
 }

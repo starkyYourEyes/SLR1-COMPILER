@@ -1,5 +1,8 @@
 #ifndef _LEXICAL
 #define _LEXICAL
+#define ID_MAX_LEN 32
+#define ID_MAX_NUM 20
+#define LINE_MAX 1024
 #include "first_follow.h"
 #include <stdlib.h>
 
@@ -126,6 +129,35 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
             exit(-1);
         }
     }
+}
+
+void lex_runner(char *path){
+    FILE* fp;           // 读取文件
+    fp = fopen(path, "r");
+    FILE* fp_res = fopen("files/lex_res.txt", "w");
+
+    char buf[LINE_MAX] = {0};
+	if (NULL == fp || NULL == fp_res){
+		printf("open %s failed.\n", path);
+		exit(-1);
+	}
+    int line_no = 0;
+    while (fgets(buf, LINE_MAX, fp)){   // 逐行
+        int len = strlen(buf), loc = 0;
+        line_ct_num ++;
+        for(; buf[loc]; loc ++){
+            char ch = buf[loc];
+            if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' ) continue;
+            scanner(buf, &loc, line_no, fp_res);
+        }
+        line_no ++;
+    }
+    if (0 == feof){
+        printf("fgets error\n"); // 未读到文件末尾
+        exit(-1);
+	}
+	fclose(fp);
+    fclose(fp_res);
 }
 
 #endif
