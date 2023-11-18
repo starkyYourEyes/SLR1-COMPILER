@@ -1,0 +1,17 @@
+S':begin if id 
+S:begin if id 
+C:if 
+L:begin if id 
+K:begin if id 
+A:id 
+E:- ( id 
+B:not ( - id true false 
+
+S':# 
+S:# ; 
+C:begin if id 
+L:; 
+K:end begin if id 
+A:# ; 
+E:+ * / ) rop # ; then or and 
+B:then or and ) 
