@@ -5,25 +5,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-// 每行最大长度
-#define maxsize 100 	// in KMP
-#define LINE_MAX 1024
-#define MAX_LEN_VN 3
-#define MAX_LEN_VT 10
-#define MAX_LEN_PRODUCTION 20
+#include "utils.h"
+#include "production.h"
+#include "first_follow.h"
+
 int NUM_VN = 0;		// 非终结符的个数
-char lines[32][MAX_LEN_PRODUCTION]; // 产生式的个数
-int line_num = 0;
-// struct NEXT
-// {
-// 	int type; // type,1表示FIRST集,2表示FOLLOW集
-// };
-// struct NODE{
-// 	char vn[MAX_LEN_VN];	  // 非终结符的名称
-// 	int cnt;				  // first集中终结符的个数
-// 	// 假设最多终结符的个数为20个，depend表示计算当前的follow集合所依赖的其他的非终结符的follow集
-// 	char depend[20][MAX_LEN_VN];	
-// } NODE_[20];	// 辅助计算FOLLOW集
 
 struct SET{
 	char vn[MAX_LEN_VN];	  // 非终结符的名称
@@ -33,85 +19,6 @@ struct SET{
 	char set[20][MAX_LEN_VT]; 
 } FIRST_[20], FOLLOW_[20], NODE_[20];
 
-struct CHARS{
-	int len_vn;				 // 非终结符的个数
-	char vn[20][MAX_LEN_VN]; // 非终结符, 最长为3, S' + '\0'
-	int len_vt;				 // 终结符的个数
-	char vt[40][MAX_LEN_VT]; // 终结符
-} *V;
-
-// KMP算法。
-void Nextval(char T[], int *next){
-	int lenT = strlen(T);
-	int k = -1; //前缀
-	int j = 0;	//后缀
-	next[0] = -1;
-
-	while (j < lenT){
-		if (k == -1 || T[j] == T[k]){
-			j++, k++;
-			//较之前next数组求法，改动在下面4行
-			if (T[j] != T[k]){
-				next[j] = k; //之前只有这一行
-			}
-			else{
-				next[j] = next[k]; /*为不能出现T[j] = T[ next[j ]]，
-                  所以当出现时连续进行两次回溯，k = next[next[k]]  */
-			}
-		}
-		else
-			k = next[k];
-	}
-}
-int KMP(char S[], char T[]){
-	int i = 0, j = 0, lenS, lenT;
-	lenS = strlen(S);
-	lenT = strlen(T);
-	int next[maxsize];
-	Nextval(T, next);
-
-	while (i < lenS && j < lenT)
-		if (j == -1 || S[i] == T[j])
-			i++, j++;
-		else
-			j = next[j];
-	if (j == lenT){
-		printf("Match succeed!\n");
-		return i - j;
-	} else{
-		printf("Match failed!\n");
-		return -1;
-	}
-}
-
-bool is_vn(char ch){ 
-	// 判断字符是不是非终结符, 这里假设非终结符只有一个字母，因为S'只出现在产生式左侧，这里忽略他不计
-	for (int i = 0; i < V->len_vn; ++i)
-		if (ch == V->vn[i][0])
-			return true;
-	return false;
-}
-char *is_prefix(char s[]){
-	// 这里的s对应的是产生式的右边
-	/*is_prefix计算的是，某一个非终结符s，其对应的产生式 右边的直接的终结符，直接加入到其first集中
-	也可以用来判断：s这个字符串的开头是不是一个非终结符。*/
-	// 如果是一个非终结符，返回这个非终结符串，否则返回NULL
-	for (int i = 0; i < V->len_vt; ++i){
-		int len = strlen(V->vt[i]);
-		// printf("vt:%s, len=%d\n", V->vt[i], len);
-		int j = 0;
-		for (; j < len; ++j)
-			if (s[j] != V->vt[i][j])
-				break;
-		if (j >= len)
-			return V->vt[i];
-	}
-	return NULL;
-}
-
-bool is_alpha(char ch){
-	return ch <= 'z' && ch >= 'a';
-}
 bool is_repeated(struct SET* F, char *s){
 	// 判断是不是有重复，
 	// 比如s是一个字符串，是不是在F的first集合中出现过。
@@ -119,188 +26,6 @@ bool is_repeated(struct SET* F, char *s){
 		if (strcmp(F->set[i], s) == 0)
 			return true;
 	return false;
-}
-int get_vs(char *path){
-	// 获取所有的终结符和非终结符
-	FILE *fp;
-	int line_num = 0;		  // 文件行数
-	int line_len = 0;		  // 文件每行的长度
-	char buf[LINE_MAX] = {0}; // 行数据缓存
-	fp = fopen(path, "r");
-	if (NULL == fp){
-		printf("open %s failed.\n", path);
-		return -1;
-	}
-
-	// 第一次读取，读取所有的非终结符
-	while (fgets(buf, LINE_MAX, fp)){
-		line_num++;
-		line_len = strlen(buf);
-		// 排除换行符‘\n’ windos文本排除回车符'\r'
-		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1]){
-			buf[line_len - 1] = '\0';
-			line_len--;
-		}
-		if (0 == line_len) continue; //空行
-		// printf("%s\n", buf);
-		// 扫描获取非终结符
-		int start = 0;
-		while (buf[start] == ' '){
-			start++;
-		}; // 去除开头的空格
-		strcpy(buf, buf + start);
-		int loc = 0;
-		for (; buf[loc] != '-' && buf[loc] != ' '; loc++){};
-		buf[loc] = '\0';
-		bool flag = false;
-		for (int i = 0; i < V->len_vn; ++i)
-			if (strcmp(V->vn[i], buf) == 0){
-				flag = true;
-				break;
-			}
-		if (!flag){
-			strcpy(V->vn[V->len_vn], buf);
-			V->len_vn++;
-		}
-	}
-	rewind(fp); // 文件指针回到开头
-	// 读取所有的终结符
-	while (fgets(buf, LINE_MAX, fp)){
-		line_num++;
-		line_len = strlen(buf);
-		// 排除换行符‘\n’ windos文本排除回车符'\r'
-		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1]){
-			buf[line_len - 1] = '\0';
-			line_len--;
-			// if (0 == line_len)
-			// 	continue; //空行
-		}
-		if (0 == line_len) continue; //空行
-		int loc = 0;
-		for (; buf[loc] != '>' || buf[loc] == ' '; loc++){}; // 清除'>'后面的空格,短路或
-		// printf("raw: %s\n", buf + loc + 1);
-		strcpy(buf, buf + loc + 1);
-
-		int i = 0;
-		char word[10];
-		for (; buf[i]; i++){ // 双指针
-			memset(word, '\0', strlen(word));
-			// int start = i;   // 右侧只会出现，空格，\0, 终结符，小写字母，符号
-			if (is_vn(buf[i]) || buf[i] == ' ')
-				continue; // 非终结符或空格，直接跳过
-			int j = i;
-			for (; is_alpha(buf[j]); ++j){};
-			// printf("%s\n", buf);
-			// printf("loc:%d\n", j);
-			if (j != i){
-				strncpy(word, buf + i, j - i);
-				word[j - i] = '\0';
-				// printf("word1:%s\n", word);
-				bool flag = false;
-				for (int k = 0; k < V->len_vt; ++k)
-					if (strcmp(V->vt[k], word) == 0){
-						flag = true;
-						break;
-					}
-				if (!flag){
-					strcpy(V->vt[V->len_vt], word);
-					V->len_vt++;
-				}
-				i = j - 1;
-			} else{
-				// 需要判断是否达到字符串末尾
-				for (; !is_alpha(buf[j]) && !is_vn(buf[j]) && buf[j] != ' ' && buf[j]; ++j){
-					// printf("buf[j]:%c\n", buf[j]);
-				};
-				if (j != i){
-					strncpy(word, buf + i, j - i);
-					word[j - i] = '\0';
-					// printf("word2:%s\n", word);
-					bool flag = false;
-					for (int k = 0; k < V->len_vt; ++k)
-						if (strcmp(V->vt[k], word) == 0){
-							flag = true;
-							break;
-						}
-					if (!flag){
-						strcpy(V->vt[V->len_vt], word);
-						V->len_vt++;
-					}
-					i = j - 1;
-				}
-			}
-		}
-	}
-	if (0 == feof){
-		printf("fgets error\n"); // 未读到文件末尾
-		return -1;
-	}
-	fclose(fp);
-	return line_num;
-}
-int get_production_left(char* line){
-	// 产生式的开头不可以有空格
-	// 找到产生式的左边的结束的位置
-	int loc = 0;
-	for(; line[loc] && line[loc] != '-'; ++ loc){};	// 找到 - 的位置
-	loc --;
-	while (loc >= 0 && line[loc] == ' '){ loc --; }; // 跳过空格
-	if (loc < 0) return -1; // 错误
-	return loc;
-}
-int get_production_right(char* line){
-	// 找到产生式的右边的开始的位置
-	int loc = 0;
-	for(; line[loc] && line[loc] != '>'; ++ loc){};	// 找到 > 的位置
-	loc ++;
-	while (line[loc] && line[loc] == ' '){ loc ++; }; // 跳过空格
-	if (loc >= strlen(line)) return -1; // 错误
-	return loc;
-}
-int get_vn_no(char* vn){
-	// 找到这个非终结符的编号，
-	// 因为非终结符的 顺序都是按照V中的顺序来的，所以非终结符的顺序唯一，只需要确定其编号
-	for (int i = 0; i < V->len_vn; ++ i)
-		if (strcmp(vn, V->vn[i]) == 0)
-			return i;
-	return -1;
-}
-int get_vt_no(char* vt){
-	// 找到这个终结符的编号，
-	// 因为终结符的 顺序都是按照V中的顺序来的，所以终结符的顺序唯一，只需要确定其编号
-	for (int i = 0; i < V->len_vt; ++ i){
-		if (strcmp(vt, V->vt[i]) == 0)
-			return i;
-	}
-	return -1;
-}
-
-void read_lines(char *path){
-	FILE *fp;
-	int line_len = 0;		  // 文件每行的长度
-	char buf[LINE_MAX] = {0}; // 行数据缓存
-	fp = fopen(path, "r");
-	if (NULL == fp){
-		printf("open %s failed.\n", path);
-		return;
-	}
-	while (fgets(buf, LINE_MAX, fp)){
-		line_len = strlen(buf);
-		// 排除换行符‘\n’ windos文本排除回车符'\r', 空格' '
-		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1]){
-			buf[line_len - 1] = '\0';
-			line_len--;
-			// if (0 == line_len)
-			// 	continue; //空行
-		}
-		if (0 == line_len) continue; //空行
-		strcpy(lines[line_num ++], buf);
-	}
-	if (0 == feof){
-		printf("fgets error\n"); // 未读到文件末尾
-		return;
-	}
-	fclose(fp);
 }
 void cal_first(struct SET *FIRST){
 	// 不递归求解First集
@@ -362,7 +87,6 @@ void cal_first(struct SET *FIRST){
 		}
 	}
 }
-
 void cal_follow(){
 	// 计算follow集，read_lines函数已经把产生式的个数以及产生式读入到了lines数组中
 	// 采用状态图的计算方法，即使图中会出现环，但是判断条件为循环计算直到不再变化为止
@@ -498,9 +222,9 @@ void cal_follow(){
 }
 
 int main(int argc, char *argv[]){
-	FILE* w_res = fopen("first-follow-set.txt", "w");
+	FILE* w_res = fopen("files/first-follow-set.txt", "w");
 	if (NULL == w_res){
-		printf("write %s failed.\n", "first-follow-set.txt");
+		printf("write %s failed.\n", "files/first-follow-set.txt");
 		return -1;
 	}
 	V = (struct CHARS *)malloc(sizeof(struct CHARS));
@@ -523,10 +247,6 @@ int main(int argc, char *argv[]){
 	printf("\n");
 	read_lines(argv[1]);
 
-	// struct SET* FIRST = (struct SET*)malloc(sizeof(struct SET));
-	// cal_first(FIRST);
-	// for(int i = 0; i < FIRST->cnt; ++ i)
-	//  printf("set:%s\n", FIRST->set[i]);
 	// 将FIRST集中的非终结符按照V中的非终结符的顺序填进去
 	for (int i = 0; i < V->len_vn; ++i) strcpy(FIRST_[i].vn, V->vn[i]);
 	int preFirst[20] = {0};
@@ -574,16 +294,10 @@ int main(int argc, char *argv[]){
 		FOLLOW_[0].cnt ++;
 		strcpy(FOLLOW_[0].set[0], "#");
 	}
-	// for (int i = 0; i < V->len_vn; ++ i){
-	// 	printf("%s, %d, %s\n", FOLLOW_[i].vn, FOLLOW_[i].cnt, FOLLOW_[i].set[0]);
-	// }
+
 	// 将FOLLOW集中的非终结符按照V中的非终结符的顺序填进去
 	for (int i = 0; i < V->len_vn; ++i) strcpy(NODE_[i].vn, V->vn[i]);
-	// printf("\n===============================================\n");
 	cal_follow();
-	// printf("\n===============================================\n");
-
-
 	
 	printf("follow sets:\n");
 	for (int i = 0; i < V->len_vn; ++ i){
@@ -598,13 +312,7 @@ int main(int argc, char *argv[]){
 		fprintf(w_res, "\n");
 		printf(" }\n");
 	}
-	// printf("\n===============================================\n");
-	// 	for (int i = 0; i < V->len_vn; ++ i){
-	// 	printf("vn:%2s--", V->vn[i]);
-	// 	for (int j = 0; j < NODE_[i].cnt; ++ j)
-	// 		printf("%s, ", NODE_[i].set[j]);
-	// 	printf("\n");
-	// }
+
 	fclose(w_res);
 	return 0;
 }

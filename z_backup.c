@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include "utils.h"
 #define COUNT 20
 #define ITEM_LEN 5
 #define MAX_LEN_PRODUCTION 20
@@ -481,46 +482,46 @@ void init(struct lr_item_set** S){
 
 
 int main(int argc, char *argv[]){
-    read_lines(argv[1]);
-    for (int i = 0; i < line_num; ++ i)
-        printf("%s\n", lines[i]);
-    // 获得所有的终结符和非终结符
-    V = (struct CHARS *)malloc(sizeof(struct CHARS));
-	V->len_vn = V->len_vt = 0;
-    get_vs(argv[1]);
+    // read_lines(argv[1]);
+    // for (int i = 0; i < line_num; ++ i)
+    //     printf("%s\n", lines[i]);
+    // // 获得所有的终结符和非终结符
+    // V = (struct CHARS *)malloc(sizeof(struct CHARS));
+	// V->len_vn = V->len_vt = 0;
+    // get_vs(argv[1]);
 
-    // 初始化求所有的项目集
-    struct lr_item_set* S;
-    init(&S);
-    // ALL_LR_ITEM_SET = (struct lr_item_set*)malloc(COUNT * sizeof(struct lr_item_set));
-    // printf("len:%d\n", S->cnt);
-    shift(S);
-    printf("UID:%d\n", UID);
-    printf("next num:%d\n", S->cnt_next_status);
-    for (int i = 0; i < S->cnt_next_status; ++ i){
-        printf("%d, %s\n", S->next[i].status, S->next[i].edge);
-    }
-    printf("====================\n");
-    for (int i = 0; i < UID; ++ i){
-        for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j)
-            printf("%d, %s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
-        printf("------------------------------\n");
-    }
-    // {
-    //     printf("%d Vns: \n", V->len_vn);
-    //     for (int i = 0; i < V->len_vn; ++i){
-    //         printf("%s", V->vn[i]);
-    //         if (i < V->len_vn - 1) printf(", ");
-    //     }
-    //     printf("\n");
-    //     printf("%d Vts: \n", V->len_vt);
-    //     for (int i = 0; i < V->len_vt; ++i){
-    //         printf("%s, ", V->vt[i]);
-    //         if (i < V->len_vn - 1) printf(", ");
-    //     }
-    //     printf("\n");
+    // // 初始化求所有的项目集
+    // struct lr_item_set* S;
+    // init(&S);
+    // // ALL_LR_ITEM_SET = (struct lr_item_set*)malloc(COUNT * sizeof(struct lr_item_set));
+    // // printf("len:%d\n", S->cnt);
+    // shift(S);
+    // printf("UID:%d\n", UID);
+    // printf("next num:%d\n", S->cnt_next_status);
+    // for (int i = 0; i < S->cnt_next_status; ++ i){
+    //     printf("%d, %s\n", S->next[i].status, S->next[i].edge);
     // }
-    
+    // printf("====================\n");
+    // for (int i = 0; i < UID; ++ i){
+    //     for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j)
+    //         printf("%d, %s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
+    //     printf("------------------------------\n");
+    // }
+    // // {
+    // //     printf("%d Vns: \n", V->len_vn);
+    // //     for (int i = 0; i < V->len_vn; ++i){
+    // //         printf("%s", V->vn[i]);
+    // //         if (i < V->len_vn - 1) printf(", ");
+    // //     }
+    // //     printf("\n");
+    // //     printf("%d Vts: \n", V->len_vt);
+    // //     for (int i = 0; i < V->len_vt; ++i){
+    // //         printf("%s, ", V->vt[i]);
+    // //         if (i < V->len_vn - 1) printf(", ");
+    // //     }
+    // //     printf("\n");
+    // // }
+    print_h();
 
     return 0;
 }

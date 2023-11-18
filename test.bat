@@ -3,10 +3,10 @@
 chcp 65001  
 echo 中文
 echo file.bat: %0
-echo grammar.txt: %1
-gcc .\st.c -o st.exe
-gcc .\slr1.c -o slr1.exe
-gcc .\Lexical.c -o lex.exe
+echo files/grammar.txt: %1
+gcc .\st.c -o st
+gcc .\slr1.c -o slr1
+gcc .\Lexical.c -o lex
 .\st.exe %1
-.\lex.exe code.txt
+.\lex.exe files/code.txt
 .\slr1.exe %1

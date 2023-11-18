@@ -86,7 +86,8 @@ struct char_stack{                      // 符号栈
 //     char *input[ITEM_LEN];  // type = 0-> 终结符
 // };
 int _STEP;                              // 分析过程中的每一行的编号（步骤
-int current_line;                       // 语法分析正在进行分析的行号
+int current_line;                       // 语法分析正在进行分析的行号, 报错定位行号
+FILE* analyse_res;                      // 语法分析的步骤写入到文件
 struct analysis_item{
     int step;                           // 步骤
     // struct status_stack stat_stk;    // 状态栈
@@ -564,9 +565,9 @@ int get_production_no(char *prod){ // 获取产生式的编号
 void read_fisrt_follow_sets(){ // 读取文件中的first集和follow集
     for (int i = 0; i < V->len_vn; ++i) strcpy(FIRST_[i].vn, V->vn[i]);
     for (int i = 0; i < V->len_vn; ++i) strcpy(FOLLOW_[i].vn, V->vn[i]);
-    FILE* fp = fopen("first-follow-set.txt", "r");
+    FILE* fp = fopen("files/first-follow-set.txt", "r");
     if (fp == NULL){
-        printf("read %s failed.", "first-follow-set.txt");
+        printf("read %s failed.", "files/first-follow-set.txt");
         exit(-1);
     }
     char buf[128];
@@ -599,7 +600,7 @@ void read_fisrt_follow_sets(){ // 读取文件中的first集和follow集
             if (mode == 0){
                 FIRST_[cnt].cnt ++;
                 FIRST_[cnt].set[no][j - loc] = '\0';
-                printf("FIRST_ appended %s, ", buf + loc);
+                // printf("FIRST_ appended %s, ", buf + loc);
                 strncpy(FIRST_[cnt].set[no], buf + loc, j - loc);
                 printf("%s\n", FIRST_[cnt].set[no]);
                 no ++;
@@ -808,6 +809,44 @@ int get_current_line(char buf[]){ // 获取正在进行分析的行号。
         res = 10 * res + (buf[loc] - '0');
     return res;
 }
+void out_stk(int mode, FILE *fp){ // 打印栈内的数据 mode = 1 -> 状态栈，mode = 0 -> 符号栈
+    if (mode == 1) {
+        for (int i = 0; i  < stat_stk.idx; ++ i){
+            printf("%d", stat_stk.stack[i]);
+            if (fp != NULL) fprintf(fp, "%d", stat_stk.stack[i]);
+            if (i < stat_stk.idx - 1) {
+                printf(".");
+                if (fp != NULL) fprintf(fp, ".");
+            }
+        }
+    } else if (mode == 0) {
+        for (int i = 0; i < char_stk.idx; ++ i){
+            printf("%s", char_stk.stack[i]);
+            if (fp != NULL) fprintf(fp, "%s", char_stk.stack[i]);
+            if (i < char_stk.idx - 1) {
+                printf(" ");
+                if (fp != NULL) fprintf(fp, " ");
+            }
+        }
+    } else {
+        printf("bad argument 'mode' in out_stk()\n");
+        exit(-1);
+    }
+}
+void out_slr1_table_item(){ // 输入分析过程中的每一步（每一行
+    printf("|(%2d)| ", _STEP + 1);
+    fprintf(analyse_res, "|(%2d)| ", _STEP + 1);
+    out_stk(1, analyse_res); 
+    printf(" | "); 
+    fprintf(analyse_res, " | ");
+    
+    out_stk(0, analyse_res);
+    printf(" | %s | ", analyses[_STEP].str_now);
+    fprintf(analyse_res, " | %s | ", analyses[_STEP].str_now);
+    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+    fprintf(analyse_res, "%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
+}
+
 char *get_input(char buf[]){ // 获取分析过程中面临的输入
     // 获取面临的输入一定是终结符！！！
     int loc = 0;
@@ -827,6 +866,10 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
     if (mode == 1){         // S
         int in_no = get_vt_no(input);
         if (strlen(TABLE_ITEM[ct].ACTION[in_no]) == 0) {
+            strcpy(analyses[_STEP].str_now, input);
+            printf("error step:\n");
+            fprintf(analyse_res, "error step:\n");
+            out_slr1_table_item();
             printf("line %d:an error occured when finding S%d, to:%s\n", current_line, ct, input);
             printf("syntax error!%s", input);
             exit(-1);
@@ -835,6 +878,9 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
     } else if (mode == 0) { // r
         int in_no = get_vn_no(input);
                 if (strlen(TABLE_ITEM[ct].GOTO[in_no]) == 0) {
+            printf("error step:\n");
+            strcpy(analyses[_STEP].str_now, input);
+            out_slr1_table_item();
             printf("line %d:an error occured when finding GOTO %d, to:%s\n", current_line, ct, input);
             printf("syntax error!%s", input);
             exit(-1);
@@ -877,36 +923,19 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     }
     return res;
 }
-void out_stk(int mode){ // 打印栈内的数据 mode = 1 -> 状态栈，mode = 0 -> 符号栈
-    if (mode == 1) {
-        for (int i = 0; i  < stat_stk.idx; ++ i){
-            printf("%d", stat_stk.stack[i]);
-            if (i < stat_stk.idx - 1) printf(".");
-        }
-    } else if (mode == 0) {
-        for (int i = 0; i < char_stk.idx; ++ i){
-            printf("%s", char_stk.stack[i]);
-            if (i < char_stk.idx - 1) printf(" ");
-        }
-    } else {
-        printf("bad argument 'mode' in out_stk()\n");
-        exit(-1);
-    }
-}
-void out_slr1_table_item(){ // 输入分析过程中的每一步（每一行
-    printf("|(%2d)| ", _STEP + 1);
-    out_stk(1); printf(" | "); out_stk(0);
-    printf(" | %s | ", analyses[_STEP].str_now);
-    printf("%s | %3s |\n", analyses[_STEP].Action, analyses[_STEP].Goto);
-}
 void grammar_analyse(){ // 根据 SLR1分析表 进行语法分析
     _STEP = 0;
     // struct analysis_item *analyse = (struct analysis_item *)malloc(sizeof(struct analysis_item));
     // memset(analyse, 0, sizeof(struct analysis_item));
     // 读入词法分析的结果并进行语法分析
-    FILE* lex_reader = fopen("lex_res.txt", "r");
+    FILE* lex_reader = fopen("files/lex_res.txt", "r");
+    analyse_res = fopen("files/slr1_process.txt", "w");
     if (lex_reader == NULL) {
-        printf("read %s error!\n", "les_res.txt");
+        printf("read %s error!\n", "files/les_res.txt");
+        exit(-1);
+    }
+    if (analyse_res == NULL) {
+        printf("write %s error!\n", "files/slr1_process.txt");
         exit(-1);
     }
     char buf[LINE_MAX];
@@ -944,7 +973,6 @@ void grammar_analyse(){ // 根据 SLR1分析表 进行语法分析
             _STEP ++;    // 遇到非终结符，直接_STEP + 1 
         } else {
             // 取  状态栈  栈顶元素
-            // out_stk(0);
             // printf("---current input:%s\n", input);
                 //             out_slr1_table_item();
             int stk_idx = stat_stk.idx - 1;
@@ -1025,9 +1053,9 @@ ACTION_S:
     fclose(lex_reader);
 }
 int main(int argc, char *argv[]){
-    FILE* fp = fopen("item_set.txt", "w");
+    FILE* fp = fopen("files/item_set.txt", "w");
     if (NULL == fp){
-        printf("open %s failed.\n", "item_set.txt\0");
+        printf("open %s failed.\n", "files/item_set.txt\0");
         return -1;
 	}
     read_lines(argv[1]);
@@ -1042,8 +1070,6 @@ int main(int argc, char *argv[]){
     // 初始化求所有的项目集
     struct lr_item_set* S;
     init(&S);
-    // ALL_LR_ITEM_SET = (struct lr_item_set*)malloc(COUNT * sizeof(struct lr_item_set));
-    // printf("len:%d\n", S->cnt);
 
     shift(S);
     read_fisrt_follow_sets();
@@ -1054,7 +1080,7 @@ int main(int argc, char *argv[]){
         printf("%d, %s\n", S->next[i].status, S->next[i].edge);
     }
     
-    printf("====================\n");
+    printf("============================================================\n");
     for (int i = 0; i < UID; ++ i){
         printf("UID:%d  ", i);
         fprintf(fp, "%d\n", i);
@@ -1182,49 +1208,6 @@ int main(int argc, char *argv[]){
     for (int i = 0; i < char_stk.idx; ++ i)
         printf("%s ", char_stk.stack[i]);
     printf("\n");
-    // int **gotos = r_goto();
-    // int **actions = r_action();
-
-    // // 输出所有的终结符和非终结符
-    // {
-    //     printf("%d Vns: \n", V->len_vn);
-    //     for (int i = 0; i < V->len_vn; ++i){
-    //         printf("%s", V->vn[i]);
-    //         if (i < V->len_vn - 1) printf(", ");
-    //     }
-    //     printf("\n");
-    //     printf("%d Vts: \n", V->len_vt);
-    //     for (int i = 0; i < V->len_vt; ++i){
-    //         printf("(%d, %s), ", strlen(V->vt[i]), V->vt[i]);
-    //         if (i < V->len_vn - 1) printf(", ");
-    //     }
-    //     printf("\n");
-    // }
-    // grammar_analyse();
-    // printf("%d, %s, %s, %s, %s\n", analyses[0].step, analyses[0].str_now, analyses[0].stat_stk.stack[0], analyses[0].char_stk.stack[0], analyses[0].Action);
-    // printf("%d, %s, %s, %s, %s\n", analyses[1].step, analyses[1].str_now, analyses[1].stat_stk.stack[0], analyses[1].char_stk.stack[0], analyses[1].Action);
-    
-    // for (int i = 0; i < line_num; ++ i)
-    //     printf("%d\n", count_production_right_num(i));
-    
-    // {
-    //     char buf[128];
-    //     int line_len;
-    //     FILE* fff = fopen("lex_res.txt", "r");
-    //         while (fgets(buf, LINE_MAX, fff)){
-    //         line_num++;
-    //         line_len = strlen(buf);
-    //         // 排除换行符‘\n’ windos文本排除回车符'\r'
-    //         while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1]){
-    //             buf[line_len - 1] = '\0';
-    //             line_len--;
-    //         }
-    //         if (0 == line_len) continue; //空行
-    //         printf("%s\n", get_input(buf));
-    //     }
-    //     fclose(fff);
-    // }
-
 
     return 0;
 }

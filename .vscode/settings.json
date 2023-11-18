@@ -18,6 +18,10 @@
         "xstring": "c",
         "xtree": "c",
         "iterator": "c",
-        "xmemory": "c"
+        "xmemory": "c",
+        "stdio.h": "c",
+        "iostream": "cpp",
+        "stdio_s.h": "c",
+        "stdlib.h": "c"
     }
 }
