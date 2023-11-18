@@ -2,8 +2,8 @@
 #define _FIRST_FOLLOW_SET
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "production.h"
-#include "utils.h"
 #define MAX_LEN_VN 3
 #define MAX_LEN_VT 10
 #define ITEM_LEN 5          // S12, r4...
@@ -28,7 +28,12 @@ struct SET{
 	// 在NODE_中表示计算这个非终结符的FOLLOW集所依赖的其他的非终结符
 	char set[20][MAX_LEN_VT]; 
 } FIRST_[20], FOLLOW_[20];
-
+bool is_digit(char ch){
+    return ch >= '0' && ch <= '9';
+}
+bool is_alpha(char ch){
+    return (ch >='a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+}
 bool is_vn(char ch){ 
 	// 判断字符是不是非终结符, 这里假设非终结符只有一个字母，因为S'只出现在产生式左侧，这里忽略他不计
 	for (int i = 0; i < V->len_vn; ++i)
