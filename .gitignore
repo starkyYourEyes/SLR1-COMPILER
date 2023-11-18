@@ -1,0 +1,6 @@
+*demo*
+/.vscode
+*.exe
+*backup*
+a.*
+test.bat

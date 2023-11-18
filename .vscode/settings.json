@@ -1,0 +1,32 @@
+{
+    "files.associations": {
+        "istream": "c",
+        "memory": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "xlocmon": "c",
+        "xlocnum": "c",
+        "xloctime": "c",
+        "xutility": "c",
+        "ranges": "c",
+        "deque": "c",
+        "span": "c",
+        "stack": "c",
+        "vector": "c",
+        "xlocinfo": "c",
+        "xstring": "c",
+        "xtree": "c",
+        "iterator": "c",
+        "xmemory": "c",
+        "stdio.h": "c",
+        "iostream": "cpp",
+        "stdio_s.h": "c",
+        "stdlib.h": "c",
+        "first_follow.h": "c",
+        "slr1.h": "c",
+        "production.h": "c",
+        "utils.h": "c",
+        "lexical.h": "c"
+    }
+}
