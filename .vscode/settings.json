@@ -26,6 +26,7 @@
         "first_follow.h": "c",
         "slr1.h": "c",
         "production.h": "c",
-        "utils.h": "c"
+        "utils.h": "c",
+        "lexical.h": "c"
     }
 }

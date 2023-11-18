@@ -92,9 +92,8 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
                 printf("(%c=, rop, %d)\n", s[*loc], line);
                 fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
             } else {
-                -- *loc;	// 回退一个字符
-                printf("(%c, rop, %d)\n", s[*loc], line);
-                fprintf(fp_res, "(%c, rop, %d)\n", s[*loc], line);
+                -- *loc;
+                goto ERROR;
             }
             break;
         //分界符
@@ -104,8 +103,7 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
                 printf("(:=, :=, %d)\n", line);
                 fprintf(fp_res, "(:=, :=, %d)\n", line);
             } else {
-                printf("line %d:%d  unexpected character '%c'", line_ct_num, *loc, s[*loc]);
-                exit(-1);
+                goto ERROR;
             }
             break;
         case';':
@@ -124,6 +122,7 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
             printf("(%c, #, %d)\n", s[*loc], line);
             fprintf(fp_res, "(%c, #, %d)\n", s[*loc], line);
             break;
+ERROR:
         default:
             printf("line %d:%d  unexpected character '%c'", line_ct_num, *loc, s[*loc]);
             exit(-1);
