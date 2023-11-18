@@ -2,7 +2,6 @@
 /.vscode
 *.exe
 *backup*
-a.*
 slr1.c
 Lexical.c
 st.c
