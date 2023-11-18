@@ -3,7 +3,6 @@
 *.exe
 *backup*
 slr1.c
-a.*
 Lexical.c
 st.c
 test.bat
