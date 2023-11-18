@@ -1,6 +1,9 @@
 *demo*
 /.vscode
-a.c
 *.exe
 *backup*
 a.*
+slr1.c
+Lexical.c
+st.c
+test.bat

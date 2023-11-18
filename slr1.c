@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
     lr_table_generator();
 
     // 输出slr1分析表
-    printf("slr1 table\n");
+    printf("slr1 table:\n");
     {    
         printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
         printf("|    |                                     ACTION                                          |              GOTO             |\n");
@@ -162,7 +162,8 @@ int main(int argc, char *argv[]){
         printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
     }
 
-    grammar_analyse();
+    printf("analyse process:\n");
+    syntax_analyse();
     for (int i = 0; i < stat_stk.idx; ++ i)
         printf("%d ", stat_stk.stack[i]);
     printf("\n");

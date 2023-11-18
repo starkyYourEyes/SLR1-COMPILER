@@ -27,6 +27,7 @@ int main(int argc, char *argv[]){
             printf("%s, ", V->vt[i]);
             if (i < V->len_vn - 1) printf(", ");
         }
+        printf("\n");
     }
 
     read_lines(argv[1]);
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]){
 
     cal_follow();
     
-    printf("follow sets:\n");
+    printf("\nfollow sets:\n");
 	{
         for (int i = 0; i < V->len_vn; ++ i){
             printf("%-2s:{ ", V->vn[i]);
@@ -65,12 +66,11 @@ int main(int argc, char *argv[]){
             printf(" }\n");
         }
     }
-    printf("\n");
 	fclose(w_res);
 
-    printf("lex res:\n");
+    printf("\nlex res:\n");
     lex_runner(argv[2]);
-    printf("slr1 analyse process:\n");
+    printf("\nslr1 analyse:\n");
     slr1_runner();
 
     return 0;

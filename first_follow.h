@@ -285,7 +285,7 @@ void cal_follow(){ // 计算follow集
 	strcpy(FOLLOW_[0].set[0], "#\0");
 
 	// 1. 扫描所有的产生式建立相应的FOLLOW集的关系图，并计算出能计算出的FOLLOW集 
-	printf("now cal_follow()\n");
+	// printf("now cal_follow()\n");
 	struct SET NODE_[20];
 	memset(&NODE_, 0, 20 * sizeof(struct SET));	// 初始化，cnt=0
 	// 将FOLLOW集中的非终结符按照V中的非终结符的顺序填进去
@@ -323,7 +323,7 @@ void cal_follow(){ // 计算follow集
 				if (!lines[i][j]){
 					// 如果当前这个非终结符是产生式最后一个字符，FOLLOW(当前) += FOLLOW(产生式左边)
 					if (!is_repeated(&NODE_[n], vn_left)){
-						printf("%s depends on %s\n", current_vn, vn_left);
+						// printf("%s depends on %s\n", current_vn, vn_left);
 						strcpy(NODE_[n].set[NODE_[n].cnt], vn_left);
 						NODE_[n].cnt += 1;
 					}

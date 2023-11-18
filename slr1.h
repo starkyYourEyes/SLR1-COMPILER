@@ -115,7 +115,7 @@ struct lr_item_set* init_lr_item_set(){ // 初始化一个lr_item_set并返回
 }
 void del_lr_item_set(struct lr_item_set **S){ // 删除一个项目集（有重复）
     UID --;     // UID为全局变量！
-    printf("%s was freed!!\n", (*S)->item_set[0].item);
+    // printf("%s was freed!!\n", (*S)->item_set[0].item);
     free(*S);
 }
 int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项目集
@@ -158,18 +158,18 @@ int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项�
 // }
 void shift(struct lr_item_set* S);  // 函数声明，方便在expand()中调用
 void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
-    printf("UID:%d, cnt:%d\n", S->status, S->cnt);
+    // printf("UID:%d, cnt:%d\n", S->status, S->cnt);
     int scnt = S->cnt;  // 循环过程中，S->cnt会发生改变！！！！
-    for(int i = 0; i < S->cnt; ++ i){
-        printf("expand() %d, %1c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
-    }
-    printf("???????????????????\n");
+    // for(int i = 0; i < S->cnt; ++ i){
+    //     printf("expand() %d, %1c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
+    // }
+    // printf("???????????????????\n");
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
         // 达到了末尾，即是一个规约状态（ LR(0), SLR(1)待定
         // to be optomized, to do
         char ch = S->item_set[i].item[loc]; 
-        printf("ct_loc:%d, ch:%c, ct_produce:%s\n", loc, ch, S->item_set[i].item);
+        // printf("ct_loc:%d, ch:%c, ct_produce:%s\n", loc, ch, S->item_set[i].item);
 
         if (ch == '\0') continue;
         // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
@@ -211,7 +211,7 @@ void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
     // }
 }
 void shift(struct lr_item_set* S){ // 移进
-    printf("shift() cnt:%d\n", S->cnt);
+    // printf("shift() cnt:%d\n", S->cnt);
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
         char c = S->item_set[i].item[loc];
@@ -257,8 +257,8 @@ void shift(struct lr_item_set* S){ // 移进
                     int k;  // 跳过空格
                     for (k = a_loc + strlen(tmp); new->item_set[new->cnt].item[k] && new->item_set[new->cnt].item[k] == ' '; ++ k){};
                     new->item_set[new->cnt].loc = k;    // 更新loc
-                    printf("%d, %d, %d == ", k, a_loc, strlen(tmp));
-                    printf("!!!!! UID is:%d, a_loc:%d, %s\n", UID - 1, k, new->item_set[new->cnt].item);
+                    // printf("%d, %d, %d == ", k, a_loc, strlen(tmp));
+                    // printf("!!!!! UID is:%d, a_loc:%d, %s\n", UID - 1, k, new->item_set[new->cnt].item);
                     new->cnt ++;
                     S->item_set[j].operated = true; // 标记为已经扫描过
                     // printf("%s is operated!!!!!\n", tmp);
@@ -273,12 +273,10 @@ void shift(struct lr_item_set* S){ // 移进
             new->core = core;   // 核中项目的个数
             // to do, to be optimized
             int res = is_itemset_repeated(new);
-            printf("%d new core is:\n", new->core);
+            // printf("%d new core is:\n", new->core);
             for (int x = 0; x < new->core; ++ x){
                 int y = new->item_set[x].loc;
-                printf("--%d, %1c, %s\n", y, new->item_set[x].item[y], new->item_set[x].item);
             }
-            printf("res:%d\n", res);
             if (res != -1){
                 S->cnt_next_status --;
                 S->next[S->cnt_next_status].status = ALL_LR_ITEM_SET[res]->status;   // UID记录
@@ -290,7 +288,6 @@ void shift(struct lr_item_set* S){ // 移进
             // expand(new);
         }
         
-        printf("===%d, %c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
     }
 }
 
@@ -303,7 +300,7 @@ void init(struct lr_item_set** S){ // 求初始的第一个 项目集。
     add_item_to_set(*S, 0);
     (*S)->core = 1;
     expand(*S);
-    printf("%d, %d, %s\n", (*S)->cnt, (*S)->item_set[0].loc, (*S)->item_set[0].item);
+    // printf("%d, %d, %s\n", (*S)->cnt, (*S)->item_set[0].loc, (*S)->item_set[0].item);
     
     // char ct_vn = (*S)->item_set[0].item[(*S)->item_set[0].loc];   
     // // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
@@ -315,8 +312,8 @@ void init(struct lr_item_set** S){ // 求初始的第一个 项目集。
     //         if (ct_vn == lines[i][left]) add_item_to_set(*S, i);
     //     }
     
-    for (int i = 0; i < (*S)->cnt; ++ i)
-        printf("%d, %s\n", (*S)->item_set[i].loc, (*S)->item_set[i].item);
+    // for (int i = 0; i < (*S)->cnt; ++ i)
+    //     printf("%d, %s\n", (*S)->item_set[i].loc, (*S)->item_set[i].item);
 }
 int get_production_no(char *prod){ // 获取产生式的编号
     for (int i = 0; i < line_num; ++ i)
@@ -352,10 +349,10 @@ void read_fisrt_follow_sets(){ // 读取文件中的first集和follow集
         int loc = 0;
 		for (loc = 0; buf[loc] != ':'; ++ loc){};
         loc ++;
-        printf("%s\n", buf + loc);
+        // printf("%s\n", buf + loc);
         // 依次读取first集和follow集
         int no = 0;
-        printf("cnt:%d\n", cnt);
+        // printf("cnt:%d\n", cnt);
         while (buf[loc]){ // 双指针。。。
             int j = loc;
             for (; buf[j] && buf[j] != ' '; ++ j){};
@@ -365,7 +362,7 @@ void read_fisrt_follow_sets(){ // 读取文件中的first集和follow集
                 FIRST_[cnt].set[no][j - loc] = '\0';
                 // printf("FIRST_ appended %s, ", buf + loc);
                 strncpy(FIRST_[cnt].set[no], buf + loc, j - loc);
-                printf("%s\n", FIRST_[cnt].set[no]);
+                // printf("%s\n", FIRST_[cnt].set[no]);
                 no ++;
             } else {
                 FOLLOW_[cnt].cnt ++;
@@ -408,9 +405,9 @@ bool is_null_unite_sets(char *v1, char *v2){ // 判断两个vn的follow集是不
 void lr_table_generator(){ // 生成SLR1分析表
     // TABLE_ITEM是全局变量，默认初始化为0了
     memset(TABLE_ITEM, 0, COUNT * sizeof(struct table_item));
-    for (int i = 0; i < V->len_vt; ++ i)
-        printf("%s, ", V->vt[i]);
-    printf("\n");
+    // for (int i = 0; i < V->len_vt; ++ i)
+    //     printf("%s, ", V->vt[i]);
+    // printf("\n");
     for (int i = 0; i < UID; ++ i){
         TABLE_ITEM[i].status = i;
         bool reduce = ALL_LR_ITEM_SET[i]->can_reduce;
@@ -441,12 +438,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                     }
                 }
             }
-            printf("attention: %d-", i);
-            for (int k = 0; k < num_rs; ++ k) printf("%d ", rs[k]);
-            printf("-");
-            for (int k = 0; k < num_no_ts; ++ k) printf("%d ", no_ts[k]);
-            printf("\n");
-            printf("eeee-num_rs is:%d \n", num_rs);
 
             // 判断是否有包含关系 e.g. Follow(A) 包含 非终结符
             
@@ -458,8 +449,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                     char tmp_vn[5] = {0};
                     for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[rs[k]].item[p];
                     tmp_vn[t + 1] = '\0';
-                    printf("item:%s, ", ALL_LR_ITEM_SET[i]->item_set[rs[k]].item);
-                    printf("tmp_vn:%s, ct_vt:%s\n", tmp_vn, V->vt[ts[h]]);
                     if (is_in_follow_set(tmp_vn, V->vt[ts[h]]) != -1){
                         is_error ++;
                         if (is_error >= 2){
@@ -471,13 +460,8 @@ void lr_table_generator(){ // 生成SLR1分析表
                     }
                 }   
             }
-            // if (num_rs == 0) {
-            //     printf("eeeeeee!\n");
-            //     exit(-1);
-            // }
             if (num_rs == 1) { // 只有一条·到达末尾的，在其FOLLOW集里面就能规约
                 // 拿到产生式左边的终结符
-                printf("look:%d, %s", i, ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 char tmp_vn[5] = {0};
                 for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[rs[0]].item[p];
@@ -487,14 +471,13 @@ void lr_table_generator(){ // 生成SLR1分析表
                 int no = get_production_no(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 tmp[0] = 'r';
                 itoa(no, tmp + 1, 10);
-                printf(":::%d . %s . %s . ", i, tmp_vn, tmp);
                 
                 for (int j = 0; j < V->len_vt; ++ j)
                     if (is_in_follow_set(tmp_vn, V->vt[j]) != -1){
-                        printf("%s -> %s, ", tmp_vn, V->vt[j]);
+                        // printf("%s -> %s, ", tmp_vn, V->vt[j]);
                         strcpy(TABLE_ITEM[i].ACTION[j], tmp);
                     }
-                printf("\n");
+                // printf("\n");
             } else if (num_rs > 1){    // 有多个，判断是否有规约规约冲突
                 for (int k = 0; k < num_rs; ++ k){
                     for (int h = k + 1; h < num_rs; ++ h){
@@ -543,7 +526,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                         printf("vt in follow error!\n");
                         exit(-1);
                     } else {
-                        
                         
                     }
                 }
@@ -686,7 +668,7 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     }
     return res;
 }
-void grammar_analyse(){ // 根据 SLR1分析表 进行语法分析
+void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析
     _STEP = 0;
     // struct analysis_item *analyse = (struct analysis_item *)malloc(sizeof(struct analysis_item));
     // memset(analyse, 0, sizeof(struct analysis_item));
@@ -823,78 +805,18 @@ void slr1_runner(){
         exit(-1);
         return;
 	}
-    // read_lines(path);
-    for (int i = 0; i < line_num; ++ i)
-        printf("%s\n", lines[i]);
-    // 获得所有的终结符和非终结符
-    // V = (struct CHARS *)malloc(sizeof(struct CHARS));
-	// V->len_vn = V->len_vt = 0;
-    // get_vs(path);
+
     // 这里的终结符要加一个 # 
     strcpy(V->vt[V->len_vt ++], "#\0");
     // 初始化求所有的项目集
     struct lr_item_set* S;
     init(&S);
-
     shift(S);
-    // cal_first();
-    // cal_follow();
-    read_fisrt_follow_sets();
 
-    // printf("UID:%d\n", UID);
-    printf("next num:%d\n", S->cnt_next_status);
-    for (int i = 0; i < S->cnt_next_status; ++ i){
-        printf("%d, %s\n", S->next[i].status, S->next[i].edge);
-    }
-    
-    printf("============================================================\n");
-    for (int i = 0; i < UID; ++ i){
-        printf("UID:%d  ", i);
-        fprintf(fp, "%d\n", i);
-        if (ALL_LR_ITEM_SET[i]->can_reduce) printf("yes");
-        else printf("no");
-        printf("\n");
-        for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++ j){
-            printf("(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
-            fprintf(fp, "(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
-        }
-        fprintf(fp, "\n");
-        printf("\ncore:\n");
-        for (int j = 0; j < ALL_LR_ITEM_SET[i]->core; ++ j){
-            int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
-            printf("%d, %d, %c, %s\n", ALL_LR_ITEM_SET[i]->core, loc, ALL_LR_ITEM_SET[i]->item_set[j].item[loc], ALL_LR_ITEM_SET[i]->item_set[j].item);
-        }
-        printf("\n");
-        for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++ j){
-            int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
-            printf("%d, %d, %c, %s\n", ALL_LR_ITEM_SET[i]->core, loc, ALL_LR_ITEM_SET[i]->item_set[j].item[loc], ALL_LR_ITEM_SET[i]->item_set[j].item);
-            fprintf(fp, "%d~%s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
-        }
-        printf("------------------------------\n");
-    }
     fclose(fp);
-
-    printf("first&follow set\n");
-    {
-        for (int i = 0; i < V->len_vn; ++ i){
-            printf("%s: ", V->vn[i]);
-            for (int j = 0; j < FIRST_[i].cnt; ++ j)
-                printf("%s, ", FIRST_[i].set[j]);
-            printf("\n");
-        }
-        printf("\n-------------------\n");
-        for (int i = 0; i < V->len_vn; ++ i){
-            printf("%s: ", V->vn[i]);
-            for (int j = 0; j < FOLLOW_[i].cnt; ++ j)
-                printf("%s, ", FOLLOW_[i].set[j]);
-            printf("\n");
-        }
-    }
-
     lr_table_generator();
-
     // 输出slr1分析表
-    printf("slr1 table\n");
+    printf("slr1 table:\n");
     {    
         printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
         printf("|    |                                     ACTION                                          |              GOTO             |\n");
@@ -968,11 +890,12 @@ void slr1_runner(){
         printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
     }
 
-    grammar_analyse();
-    for (int i = 0; i < stat_stk.idx; ++ i)
-        printf("%d ", stat_stk.stack[i]);
-    printf("\n");
-    for (int i = 0; i < char_stk.idx; ++ i)
-        printf("%s ", char_stk.stack[i]);
-    printf("\n");
+    printf("analyse process:\n");
+    syntax_analyse();
+    // for (int i = 0; i < stat_stk.idx; ++ i)
+    //     printf("%d ", stat_stk.stack[i]);
+    // printf("\n");
+    // for (int i = 0; i < char_stk.idx; ++ i)
+    //     printf("%s ", char_stk.stack[i]);
+    // printf("\n");
 }
