@@ -84,7 +84,29 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
         
         case'<':
         case'>':
+            ++ *loc;
+            if (s[*loc] == '='){
+                //单引号：字符；双引号：字符串
+                printf("(%c=, rop, %d)\n", s[*loc], line);
+                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
+            } else {
+                -- *loc;
+                printf("(%c, rop, %d)\n", s[*loc], line);
+                fprintf(fp_res, "(%c, rop, %d)\n", s[*loc], line);
+            }
+            break;
         case'!':
+            ++ *loc;
+            if (s[*loc] == '='){
+                //单引号：字符；双引号：字符串
+                printf("(%c=, rop, %d)\n", s[*loc], line);
+                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
+            } else {
+                -- *loc;
+                printf("(%c, not, %d)\n", s[*loc], line);
+                fprintf(fp_res, "(%c, not, %d)\n", s[*loc], line);
+            }
+            break;
         case'=':    // 即==，比较运算符
             ++ *loc;
             if (s[*loc] == '='){	

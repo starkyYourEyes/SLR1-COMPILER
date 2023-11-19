@@ -1,0 +1,36 @@
+UID:13 B->B or B
+can_solve:r15
+UID:13 B->B or B
+can_solve:r15
+UID:15 B-> B and B
+can_solve:r16
+UID:15 B-> B and B
+can_solve:r16
+UID:17 B->not B
+can_solve:r17
+UID:17 B->not B
+can_solve:r17
+UID:26 E->E+E
+can_solve:r9
+UID:26 E->E+E
+can_solve:r9
+UID:26 E->E+E
+can_solve:r9
+UID:28 E->E*E
+can_solve:r10
+UID:28 E->E*E
+can_solve:r10
+UID:28 E->E*E
+can_solve:r10
+UID:30 E->E/E
+can_solve:r11
+UID:30 E->E/E
+can_solve:r11
+UID:30 E->E/E
+can_solve:r11
+UID:32 E->-E
+can_solve:r12
+UID:32 E->-E
+can_solve:r12
+UID:32 E->-E
+can_solve:r12

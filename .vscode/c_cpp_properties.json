@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "U:\\minGW\\MinGW64-win32\\x86_64-w64-mingw32\\include\\sec_api",
+                "U:\\minGW\\MinGW64-win32\\lib\\gcc\\x86_64-w64-mingw32\\8.1.0\\include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "U:\\minGW\\MinGW64-win32\\bin\\gcc.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}

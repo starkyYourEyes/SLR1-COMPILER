@@ -1,13 +1,14 @@
 #include "slr1.h"
 #include "lexical.h"
 /*
-第一个参数——项目的文法文件(grammar.txt)
-第二个参数——源文件(code.txt)
+第一个参数——项目的文法文件(files/grammar.txt)
+第二个参数——源文件(files/code.txt)
 */
 int main(int argc, char *argv[]){
-    FILE* w_res = fopen("files/first-follow-set.txt", "w"); // 将first集和follow集写入文件中
+//    printf("%s\n", _pgmptr);
+    FILE* w_res = fopen("./files/first-follow-set.txt", "w"); // 将first集和follow集写入文件中
 	if (NULL == w_res){
-		printf("write %s failed.\n", "files/first-follow-set.txt");
+		printf("write %s failed.\n", "./files/first-follow-set.txt");
 		return -1;
 	}
 	V = (struct CHARS *)malloc(sizeof(struct CHARS));
@@ -72,6 +73,9 @@ int main(int argc, char *argv[]){
     lex_runner(argv[2]);
     printf("\nslr1 analyse:\n");
     slr1_runner();
+
+
+
 
     return 0;
 }

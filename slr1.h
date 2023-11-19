@@ -1,5 +1,11 @@
 #include "first_follow.h"
 #include <stdlib.h>
+#include <iostream>
+#include <stack>
+#include <string>
+#include <map>
+#include <vector>
+using namespace std;
 
 #define COUNT 96            // 最多有多少个项目集
 #define MAX_LEN_PRODUCTION 20
@@ -44,6 +50,17 @@ struct table_item {
     cpp_string GOTO[MAX_NUM_VN];        // 假设非终结符最多20个，lazy 2
 } TABLE_ITEM[COUNT];                    // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
 
+struct symbol {
+    string varName{};       //变量名
+    string valueStr{"0"};   //变量的值，字符串形式,初始化为0
+    int PLACE{-1};          //该变量在符号表中的位置,初始化为-1
+};
+struct quad {                  //四元式结构体
+    string op;     //操作符
+    int arg1Index; //源操作数1的符号表地址
+    int arg2Index; //源操作数2的符号表地址
+    symbol result; //目的操作数
+};
 
 struct status_stack{                    // 状态栈
     int idx;
@@ -51,7 +68,7 @@ struct status_stack{                    // 状态栈
 } stat_stk;
 struct char_stack{                      // 符号栈
     int idx;
-    char stack[MAX_STACK_SIZE][MAX_LEN_VT];
+    symbol stack[MAX_STACK_SIZE];
 } char_stk;
 
 int _STEP;                              // 分析过程中的每一行的编号（步骤
@@ -65,6 +82,109 @@ struct analysis_item{
     char Action[ITEM_LEN];              // ACTION
     char Goto[ITEM_LEN];                // GOTO
 } analyses[MAX_STEP];
+
+
+vector<quad> quads; //四元式序列
+vector<symbol> symbolTable;      //符号表
+map<string, int> ENTRY;          //用于查变量的符号表入口地址
+int tempVarNum = 0;              //临时变量个数
+symbol newtemp(){ //生成新的临时变量
+    tempVarNum ++;
+    return symbol{string("T" + to_string(tempVarNum))};
+}
+void GEN(const string& op, int arg1, int arg2, symbol &result){
+    // 运算符、参数1在符号表的编号、参数2在符号表的编号，结果符号
+    // 产生一个四元式，并填入四元式序列表
+    cout << "(" << op << ",";
+    arg1 != -1 ? cout << symbolTable[arg1].varName : cout << "_";
+    cout << ",";
+    arg2 != -1 ? cout << symbolTable[arg2].varName : cout << "_";
+    cout << "," << result.varName << ")" << endl;
+    quads.push_back(quad{op, arg1, arg2, result}); //插入到四元式序列中
+//    cout << "place: " << result.PLACE << endl;
+    cout << "GEN:\n";
+    cout << "ct_op:" << op << endl;
+    if (op == "-") { //将临时变量result注册进入符号表
+        result.PLACE = symbolTable.size();
+        result.valueStr = "-" + symbolTable[arg1].valueStr;
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "+"){ //将临时变量result注册进入符号表
+        result.PLACE = symbolTable.size();
+        result.valueStr = to_string(atoi(symbolTable[arg1].valueStr.c_str()) + atoi(symbolTable[arg2].valueStr.c_str()));
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "@"){ //将临时变量result注册进入符号表
+        result.PLACE = symbolTable.size();
+        result.valueStr = to_string(atoi(symbolTable[arg1].valueStr.c_str()) - atoi(symbolTable[arg2].valueStr.c_str()));
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "*"){ //将临时变量result注册进入符号表
+        result.PLACE = symbolTable.size();
+        result.valueStr = to_string(atoi(symbolTable[arg1].valueStr.c_str()) * atoi(symbolTable[arg2].valueStr.c_str()));
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "/") { //将临时变量result注册进入符号表
+        result.PLACE = symbolTable.size();
+        result.valueStr = to_string(atoi(symbolTable[arg1].valueStr.c_str()) / atoi(symbolTable[arg2].valueStr.c_str()));
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == ":="){ //这个result不是临时变量了，故不用注册进入符号表，只进行绑定
+        cout << "GEN:" << arg1 << " " << symbolTable[arg1].valueStr << endl;
+        result.valueStr = symbolTable[arg1].valueStr;
+
+        for (auto &res : symbolTable)   // 回去填补symbolTable中变量的值
+            if (res.varName == result.varName)
+                res.valueStr = result.valueStr;
+        // cout << "res: " ;
+        // cout << result.varName << " " << result.valueStr << endl;
+    } else if (op == "or"){
+        result.PLACE = symbolTable.size();
+        int res = -1;
+        if (atoi(symbolTable[arg1].valueStr.c_str()) || atoi(symbolTable[arg2].valueStr.c_str()))
+            res = 1;
+        else res = 0;
+        result.valueStr = to_string(res);
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "and"){
+        result.PLACE = symbolTable.size();
+        int res = -1;
+        if (atoi(symbolTable[arg1].valueStr.c_str()) && atoi(symbolTable[arg2].valueStr.c_str()))
+            res = 1;
+        else res = 0;
+        result.valueStr = to_string(res);
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "not"){
+        result.PLACE = symbolTable.size();
+        if (symbolTable[arg1].valueStr == "1")
+            result.valueStr = "0";
+        else if (symbolTable[arg1].valueStr == "0")
+            result.valueStr = "1";
+        else {
+            cout << "error in not()\n";
+            exit(-1);
+        }
+        symbolTable.push_back(result);
+        ENTRY[result.varName] = result.PLACE;
+    } else if (op == "rop"){
+
+    } else{
+        cout << "unexpected operator!\n";
+        exit(-1);
+    }
+}
+
+void out_quad(vector<quad> &v){
+    for (auto & quad : v){
+        cout << "(" << quad.op << ",";
+        quad.arg1Index != -1 ? cout << symbolTable[quad.arg1Index].varName : cout << "_";
+        cout << ",";
+        quad.arg2Index != -1 ? cout << symbolTable[quad.arg2Index].varName : cout << "_";
+        cout << "," << quad.result.varName << ")" << endl;
+    }
+}
 
 int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几个产生式
     // 每一次往一个项目集中添加一个新的项目的时候，这个项目的·都在产生式右边的最左边。
@@ -150,12 +270,6 @@ int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项�
     // printf("true!!!!!!!!!!!!!!\n");
     return -1;
 }
-// bool is_item_left(struct lr_item_set* S){ // 判断是否已经操作过这个项目集
-//     for (int i = 0; i < S->cnt; ++ i)
-//         if (!S->item_set[i].operated)
-//             return true;
-//     return false;
-// }
 void shift(struct lr_item_set* S);  // 函数声明，方便在expand()中调用
 void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
     // printf("UID:%d, cnt:%d\n", S->status, S->cnt);
@@ -188,27 +302,6 @@ void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
         CONTINUE_ = UID;
         shift(S);
     }
-        
-    // static int x = 0;
-    // if (x <= 80){
-    //     shift(S);
-    // }
-    // x ++;
-    
-    // // 这个重复是在shift里面判断就行（判断核是不是有重复
-    // if (is_itemset_repeated(S)){ 
-    //     // if (pre != NULL){
-    //     //     pre->cnt_next_status --;
-    //     //     pre->next[pre->cnt_next_status].status = pre->status;   // UID记录
-    //     //     // to be optimized,  to do
-    //     //     strcpy(pre->next[pre->cnt_next_status].edge, "?");
-    //     //     pre->cnt_next_status ++;
-    //     // }
-
-    //     // del_lr_item_set(&S);
-    // } else{
-    //     // shift(S);
-    // }
 }
 void shift(struct lr_item_set* S){ // 移进
     // printf("shift() cnt:%d\n", S->cnt);
@@ -239,9 +332,9 @@ void shift(struct lr_item_set* S){ // 移进
         if (!is_front_repeated(S, tmp)){
             // 如果移进那个的字符没有重复，才新建一个项目集（新建项目集的依据！
             // printf("tmp:%s\n", tmp);
-            struct lr_item_set* new = init_lr_item_set();
+            struct lr_item_set* new_set = init_lr_item_set();
             // 把信息复制过去
-            S->next[S->cnt_next_status].status = new->status;   // UID记录
+            S->next[S->cnt_next_status].status = new_set->status;   // UID记录
             strcpy(S->next[S->cnt_next_status].edge, tmp);      // 边记录
             S->cnt_next_status ++;
             // 找到了，给这个新项目集添加 核
@@ -253,39 +346,39 @@ void shift(struct lr_item_set* S){ // 移进
                 if (equal_prefix(tmp, S->item_set[j].item + S->item_set[j].loc)){
                     // printf("%s equals %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
                     core ++;
-                    strcpy(new->item_set[new->cnt].item, S->item_set[j].item);
+                    strcpy(new_set->item_set[new_set->cnt].item, S->item_set[j].item);
                     int k;  // 跳过空格
-                    for (k = a_loc + strlen(tmp); new->item_set[new->cnt].item[k] && new->item_set[new->cnt].item[k] == ' '; ++ k){};
-                    new->item_set[new->cnt].loc = k;    // 更新loc
+                    for (k = a_loc + strlen(tmp); new_set->item_set[new_set->cnt].item[k] && new_set->item_set[new_set->cnt].item[k] == ' '; ++ k){};
+                    new_set->item_set[new_set->cnt].loc = k;    // 更新loc
                     // printf("%d, %d, %d == ", k, a_loc, strlen(tmp));
-                    // printf("!!!!! UID is:%d, a_loc:%d, %s\n", UID - 1, k, new->item_set[new->cnt].item);
-                    new->cnt ++;
+                    // printf("!!!!! UID is:%d, a_loc:%d, %s\n", UID - 1, k, new_set->item_set[new_set->cnt].item);
+                    new_set->cnt ++;
                     S->item_set[j].operated = true; // 标记为已经扫描过
                     // printf("%s is operated!!!!!\n", tmp);
                     // to be optimized. 
                     // 并且如果扫描到了结尾了-----处理一下to do
-                    int new_loc = new->item_set[new->cnt].loc;
+                    int new_loc = new_set->item_set[new_set->cnt].loc;
                     if (S->item_set[i].item[new_loc] == '\0') {
                         // · 到结尾了to do
                     }
                 }  
             }
-            new->core = core;   // 核中项目的个数
+            new_set->core = core;   // 核中项目的个数
             // to do, to be optimized
-            int res = is_itemset_repeated(new);
-            // printf("%d new core is:\n", new->core);
-            for (int x = 0; x < new->core; ++ x){
-                int y = new->item_set[x].loc;
+            int res = is_itemset_repeated(new_set);
+            // printf("%d new_set core is:\n", new_set->core);
+            for (int x = 0; x < new_set->core; ++ x){
+                int y = new_set->item_set[x].loc;
             }
             if (res != -1){
                 S->cnt_next_status --;
                 S->next[S->cnt_next_status].status = ALL_LR_ITEM_SET[res]->status;   // UID记录
                 strcpy(S->next[S->cnt_next_status].edge, tmp);
                 S->cnt_next_status ++;
-                del_lr_item_set(&new);
+                del_lr_item_set(&new_set);
             }
-            else expand(new);
-            // expand(new);
+            else expand(new_set);
+            // expand(new_set);
         }
         
     }
@@ -321,65 +414,6 @@ int get_production_no(char *prod){ // 获取产生式的编号
             return i;
     return -1;
 }
-
-void read_fisrt_follow_sets(){ // 读取文件中的first集和follow集
-    for (int i = 0; i < V->len_vn; ++i) strcpy(FIRST_[i].vn, V->vn[i]);
-    for (int i = 0; i < V->len_vn; ++i) strcpy(FOLLOW_[i].vn, V->vn[i]);
-    FILE* fp = fopen("files/first-follow-set.txt", "r");
-    if (fp == NULL){
-        printf("read %s failed.", "files/first-follow-set.txt");
-        exit(-1);
-    }
-    char buf[128];
-    int mode = 0;   // mode = 0 表示读取first集，1 表示读取follow集
-    int cnt = 0;
-
-    while (fgets(buf, LINE_MAX, fp)){
-		int line_len = strlen(buf);
-		// 排除换行符‘\n’ windos文本排除回车符'\r', 空格' '
-		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1]){
-			buf[line_len - 1] = '\0';
-			line_len--;
-		}
-        if (0 == line_len){
-            cnt = 0;
-            mode = 1;
-            continue; //空行
-        }
-        int loc = 0;
-		for (loc = 0; buf[loc] != ':'; ++ loc){};
-        loc ++;
-        // printf("%s\n", buf + loc);
-        // 依次读取first集和follow集
-        int no = 0;
-        // printf("cnt:%d\n", cnt);
-        while (buf[loc]){ // 双指针。。。
-            int j = loc;
-            for (; buf[j] && buf[j] != ' '; ++ j){};
-            // printf("%s, ", buf + j);
-            if (mode == 0){
-                FIRST_[cnt].cnt ++;
-                FIRST_[cnt].set[no][j - loc] = '\0';
-                // printf("FIRST_ appended %s, ", buf + loc);
-                strncpy(FIRST_[cnt].set[no], buf + loc, j - loc);
-                // printf("%s\n", FIRST_[cnt].set[no]);
-                no ++;
-            } else {
-                FOLLOW_[cnt].cnt ++;
-                FOLLOW_[cnt].set[no][j - loc] = '\0';
-                strncpy(FOLLOW_[cnt].set[no ++], buf + loc, j - loc);
-            }
-            // cnt = cnt % V->len_vn;
-            if (buf[j]) loc = j + 1;
-            else loc = j;
-            // printf("%s\n", buf + loc);
-        }
-        cnt ++;
-        // printf("\n");
-	}
-    fclose(fp);
-}
-
 int is_in_follow_set(char *vn, char *s){ // 判断vn的follow集包不包含s
     // printf("vn:%s\n", vn);
     int no = get_vn_no(vn);
@@ -440,7 +474,6 @@ void lr_table_generator(){ // 生成SLR1分析表
             }
 
             // 判断是否有包含关系 e.g. Follow(A) 包含 非终结符
-            
             for (int h = 0; h < num_ts; ++ h){
                 int is_error = 0;   // 不符合P139的条件，有两个及以上的可规约项目的follow集中包含同一个非终结符
                 for (int k = 0; k < num_rs; ++ k){
@@ -456,7 +489,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                             printf("%s is in follow set!", V->vt[ts[h]]);
                             exit(-1);
                         }
-                        
                     }
                 }   
             }
@@ -501,32 +533,57 @@ void lr_table_generator(){ // 生成SLR1分析表
                 // printf("!!!reduce-reduce conflict!!!\n");
                 // // exit(-1);
             }
-                
         }
         for(int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++ j){
             char tmp[10];
             int no = get_vt_no(ALL_LR_ITEM_SET[i]->next[j].edge);
-            
             if (no != -1){
                 // 终结符，添加到ACTION
                 tmp[0] = 'S';
                 itoa(ALL_LR_ITEM_SET[i]->next[j].status, tmp + 1, 10);  // int to str
+                char save_r[MAX_LEN_PRODUCTION] = {0};
+                strcpy(save_r, TABLE_ITEM[i].ACTION[no]);
                 strcpy(TABLE_ITEM[i].ACTION[no], tmp);
                 // 移进-规约冲突的处理！
                 if (ALL_LR_ITEM_SET[i]->can_reduce){
                     for (int y = 0; y < num_rs; ++ y){
-                        // if (is_in_follow_set(, V->vt[no]))
-                    }
-                    int t = get_production_left(lines[which]);
-                    char tmp_vn[5] = {0};
-                    for (int p = 0; p <= t; ++ p) tmp_vn[p] = lines[which][p];
-                    tmp_vn[t + 1] = '\0';
-                    // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
-                    if (is_in_follow_set(tmp_vn, V->vt[no]) != -1){
-                        printf("vt in follow error!\n");
-                        exit(-1);
-                    } else {
-                        
+                        int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[y]].item);
+                        char tmp_vn[5] = {0};
+                        for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[rs[y]].item[p];
+                        tmp_vn[t + 1] = '\0';
+                        // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
+                        if (is_in_follow_set(tmp_vn, V->vt[no]) != -1){
+                            cout << "UID:" << i << " " << ALL_LR_ITEM_SET[i]->item_set[rs[y]].item << endl;
+                            bool can_solve = false;
+                            if (strlen(save_r) != 0){ // 尝试用优先级解决冲突, - * / not的优先级比较高
+                                char *iitem = ALL_LR_ITEM_SET[i]->item_set[rs[y]].item;
+                                for (int q = get_production_right(iitem); iitem[q]; ++ q){
+
+                                    if (iitem[q] == '-' || iitem[q] == '*' || iitem[q] == '/'){
+                                        can_solve = true;
+                                        // cout << strlen(iitem) << " " << "item:" << iitem << " " << "iitem[q]:" << iitem[q] << endl;
+                                        break;
+                                    } else if (iitem[q] == 'n' && iitem[q + 1] && iitem[q + 1] == 'o' && iitem[q + 2] && iitem[q + 2] == 't'){
+                                        can_solve = true;
+                                        break;
+                                    } else if (strcmp(iitem, lines[15]) == 0 || strcmp(iitem, lines[16]) == 0) {
+                                        can_solve = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (can_solve) {
+                                cout << "can_solve:" << save_r << endl;
+                                strcpy(TABLE_ITEM[i].ACTION[no], save_r);
+                                strcpy(ALL_LR_ITEM_SET[i]->next[j].edge, "");
+                            } else {
+                                // 利用优先级可以解决一切冲突 ！
+                                // printf("vt in follow error!\n");
+                                // exit(-1);
+                            }
+                        } else {
+                            // do nothing
+                        }
                     }
                 }
                 // strcpy(TABLE_ITEM[i].ACTION[no], ALL_LR_ITEM_SET[i]->next[j].edge);    
@@ -566,8 +623,8 @@ void out_stk(int mode, FILE *fp){ // 打印栈内的数据 mode = 1 -> 状态栈
         }
     } else if (mode == 0) {
         for (int i = 0; i < char_stk.idx; ++ i){
-            printf("%s", char_stk.stack[i]);
-            if (fp != NULL) fprintf(fp, "%s", char_stk.stack[i]);
+            printf("%s", char_stk.stack[i].varName.c_str());
+            if (fp != NULL) fprintf(fp, "%s", char_stk.stack[i].varName.c_str());
             if (i < char_stk.idx - 1) {
                 printf(" ");
                 if (fp != NULL) fprintf(fp, " ");
@@ -604,6 +661,7 @@ char *get_input(char buf[]){ // 获取分析过程中面临的输入
     char *s = is_prefix(buf + loc);
     return s;
 }
+
 char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中的下一个动作，S* or r**
     // 输入串里面只可能有终结符！
     // mode == 1 表示是在S动作之后寻找下一个状态
@@ -668,10 +726,8 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     }
     return res;
 }
-void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析
+void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
     _STEP = 0;
-    // struct analysis_item *analyse = (struct analysis_item *)malloc(sizeof(struct analysis_item));
-    // memset(analyse, 0, sizeof(struct analysis_item));
     // 读入词法分析的结果并进行语法分析
     FILE* lex_reader = fopen("files/lex_res.txt", "r");
     analyse_res = fopen("files/slr1_process.txt", "w");
@@ -684,6 +740,8 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析
         exit(-1);
     }
     char buf[LINE_MAX];
+    stack<string> semantic; //语义栈
+
     // int debug = 0;
     char *input;
     char *next_st;                  // 下一个状态
@@ -702,10 +760,39 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析
             exit(-1);
         }
 
+        string symbolToRead = input; //读头符号
+        string name = string(input);// 记录id在四元式中的中应该有的名字，而不应都是id
+        //读头不论是变量还是数字都当做终结符i处理(因为分析表中只有i这个终结符可以代表这些)
+        if (strcmp(input, "id\0") == 0 or strcmp(input, "true\0") == 0 or strcmp(input, "false\0") == 0){ // 标识符或者整数,或布尔值
+            string tmp_s = string(buf + 1);
+            tmp_s = tmp_s.substr(0, tmp_s.find(','));
+            symbolToRead = "i";
+            semantic.push(tmp_s); // 语义栈
+            //将语义加入符号表，并添加入口地址映射
+            symbol tempSym; //讲道理，如果是变量应该只有变量名没有值(至少在未初始化和未赋值前)，而整数应该只有值而没有变量名。为兼顾两者，有如下处理
+            tempSym.varName = tmp_s;
+            if (is_digit(tmp_s.at(0)))
+                tempSym.valueStr = tmp_s;
+            else if (strcmp(input, "true\0") == 0) {
+//                cout << "this is true" << tmp_s << endl;
+                tempSym.valueStr = "1";
+                name = input;
+            } else if (strcmp(input, "false\0") == 0){
+                tempSym.valueStr = "0";
+                name = input;
+            } else {
+                tempSym.valueStr = string("_"), name = tmp_s;
+            }
+
+            tempSym.PLACE = symbolTable.size();
+            symbolTable.push_back(tempSym);
+            ENTRY[tempSym.varName] = tempSym.PLACE;
+        }
+
         if (_STEP == 0){     // 第一次，进行初始化，状态初始为0，符号栈初始为 # 
             analyses[_STEP].step = _STEP;   
             stat_stk.stack[stat_stk.idx] = 0;
-            strcpy(char_stk.stack[char_stk.idx ++], "#\0");
+            char_stk.stack[char_stk.idx ++].varName = string("#\0");
             // printf("buf:%s, input:%s\n", buf, input);
             strcpy(analyses[_STEP].str_now, input);
             char *next_st = get_next_status(stat_stk.stack[stat_stk.idx], input, 1);
@@ -714,7 +801,7 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析
             stat_stk.idx ++;
             out_slr1_table_item();
             stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
-            strcpy(char_stk.stack[char_stk.idx ++], input);
+            char_stk.stack[char_stk.idx ++].varName = string(input);
             _STEP ++;    // 遇到非终结符，直接_STEP + 1 
         } else {
             // 取  状态栈  栈顶元素
@@ -733,7 +820,7 @@ ACTION_S:
                 strcpy(analyses[_STEP].Action, next_st);
                 out_slr1_table_item();
                 stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
-                strcpy(char_stk.stack[char_stk.idx ++], input);
+                char_stk.stack[char_stk.idx ++].varName = name;
                 _STEP ++;
             } else if (next_st[0] == 'r') {
                 while (next_st[0] == 'r'){
@@ -747,27 +834,96 @@ ACTION_S:
                     tmp[0] = lines[line][left], tmp[1] = '\0';
                     int top = stat_stk.stack[stat_stk.idx - num - 1];
                     next_st = get_next_status(top, tmp, 0);   // 查GOTO表
-                    // printf("next_St:%s\n", next_st);
                     strcpy(analyses[_STEP].Goto, next_st);
-
+                    int nnnn = 8;   // 算术表达式
+                    int mmmm = 11;  // 算术表达式
+                    int bbbb = 15;  // 布尔表达式
                     out_slr1_table_item();
-                  
-                    stat_stk.idx -= num;// 出栈！
-                    char_stk.idx -= num;// 出栈！
+                    int PLACE = -1;
+                        // 表达式化的语义计算
+                        if (line == nnnn){ // A->id:=E
+                            symbol E, id;
+                            E = char_stk.stack[char_stk.idx - 1];
+                            id = char_stk.stack[char_stk.idx - 3];
+                            cout << line << ":" << lines[line] << endl;
+                            GEN(":=", E.PLACE, -1, id);
+                            PLACE = ENTRY[semantic.top()];
+//                            GEN("=", E.PLACE, -1, id);
+                        } else if (line >= nnnn + 1 && line <= mmmm){ // E->E+*/E
+                            string opt[4] = {"+", "*", "/"};
+                            symbol T = newtemp();
+                            symbol E1 = char_stk.stack[char_stk.idx - 3];
+                            symbol E2 = char_stk.stack[char_stk.idx - 1];
+                            cout << line << endl;
+                            GEN(opt[line - 9], E1.PLACE, E2.PLACE, T);
+                            PLACE = T.PLACE;
+                            semantic.pop(); // 更新语义栈
+                            semantic.pop();
+                            semantic.push(T.varName);
+                        } else if (line == mmmm + 1){ // E-> -E
+                            symbol T = newtemp();
+//                            cout << "T->name:" << T.varName << endl;
+                            symbol E1 = char_stk.stack[char_stk.idx - 1];
+                            semantic.pop();
+                            semantic.push(T.varName);
+//                            cout << "in -E:" << symbolTable[E1.PLACE].varName << " " << symbolTable[E1.PLACE].valueStr << " " << E1.PLACE << endl;
+                            GEN("-", E1.PLACE, -1, T);
+                            PLACE = T.PLACE;
+                        } else if (line == mmmm + 2){ // E->(E)
+//                            PLACE = ENTRY[char_stk.stack[char_stk.idx - 2]];
+                            PLACE = ENTRY[semantic.top()];
+                        } else if (line == mmmm + 3){ // E->id
+//                            char_stk.stack[char_stk.idx - 1].PLACE = ENTRY[semantic.top()];
+                            PLACE = ENTRY[semantic.top()];
+//                            cout << "24: " << semantic.top() << ", " << PLACE << endl;
+                        } else if (line == bbbb) { // B->B or B , B->B and B
+                            string opt[4] = {"or", "and"};
+                            symbol T = newtemp();
+                            symbol B1 = char_stk.stack[char_stk.idx - 3];
+                            symbol B2 = char_stk.stack[char_stk.idx - 1];
+                            GEN(opt[bbbb - 15], B1.PLACE, B2.PLACE, T);
+                            PLACE = T.PLACE;
+                            semantic.pop(); // 更新语义栈
+                            semantic.pop();
+                            semantic.push(T.varName);
+                        } else if (line == bbbb + 2) { // B->not B
+                            symbol T = newtemp();
+                            symbol E1 = char_stk.stack[char_stk.idx - 1];
+                            semantic.pop();
+                            semantic.push(T.varName);
+                            GEN("not", E1.PLACE, -1, T);
+                            PLACE = T.PLACE;
+                        } else if (line == bbbb + 3) { // B->(B)
 
-                    strcpy(char_stk.stack[char_stk.idx ++], tmp);
-                    strcpy(analyses[_STEP].str_now, input);  
+                        } else if (line == bbbb + 4) { // B->E rop E
+
+                        } else if (line == bbbb + 5 or line == bbbb + 6) { // B->true, B->false
+                            cout << "cccccc:" << lines[line] << endl;
+                            symbol T = newtemp();
+//                            cout << "T->name:" << T.varName << endl;
+                            symbol E1 = char_stk.stack[char_stk.idx - 1];
+                            cout << E1.valueStr << " " << E1.varName << " " << E1.PLACE << endl;
+//                            cout << "in -E:" << symbolTable[E1.PLACE].varName << " " << symbolTable[E1.PLACE].valueStr << " " << E1.PLACE << endl;
+                            cout << "E1 place:" << E1.PLACE << endl;
+                            cout << "enter:" << ENTRY[E1.varName] << endl;
+                            GEN(":=", ENTRY[E1.varName], -1, T);
+                            PLACE = ENTRY[E1.varName];
+                        }
+
+                        stat_stk.idx -= num;// 出栈！
+                        char_stk.idx -= num;// 出栈！
+
+                    char_stk.stack[char_stk.idx ++].varName = string(tmp);
+                    char_stk.stack[char_stk.idx - 1].PLACE = PLACE;
+
+                    strcpy(analyses[_STEP].str_now, input);
+
                     top = stat_stk.stack[stat_stk.idx - 1];
-                    // printf("top:%d, tmp:%s, ", top, tmp);
                     next_st = get_next_status(top, tmp, 0);   // 查GOTO表
-                    // printf("next_St:%s\n", next_st);
                     strcpy(analyses[_STEP].Goto, next_st);
                     stat_stk.stack[stat_stk.idx ++] = atoi(next_st);
-                    
-                    // printf("stk top:%d, input:%s\n", stat_stk.stack[stat_stk.idx - 1], input);
-                    next_st = get_next_status(stat_stk.stack[stat_stk.idx - 1], input, 1);
-                    // printf("sss:next_St:%s\n", next_st);
 
+                    next_st = get_next_status(stat_stk.stack[stat_stk.idx - 1], input, 1);
                     _STEP ++;
                 }
                 if (next_st[0] == 'S') {
@@ -777,7 +933,6 @@ ACTION_S:
                     strcpy(analyses[_STEP].Action, "acc\0");
                     out_slr1_table_item();
                     printf("accepted!\n");
-                    
                 }
             } else if (next_st[0] == 'a') {     // 判断是不是acc, 也许没用，因为接受都是在规约之后
             //     // 接受！
@@ -790,13 +945,13 @@ ACTION_S:
             }
         }
 	}
-
 	if (0 == feof){
 		printf("fgets error\n"); // 未读到文件末尾
 		return;
 	}
     fclose(lex_reader);
 }
+
 
 void slr1_runner(){
     FILE* fp = fopen("files/item_set.txt", "w");
@@ -813,7 +968,7 @@ void slr1_runner(){
     init(&S);
     shift(S);
 
-    fclose(fp);
+
     lr_table_generator();
     // 输出slr1分析表
     printf("slr1 table:\n");
@@ -890,12 +1045,52 @@ void slr1_runner(){
         printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
     }
 
+    {
+        for (int i = 0; i < UID; ++i) {
+//        printf("UID:%d  ", i);
+            fprintf(fp, "%d\n", i);
+            if (ALL_LR_ITEM_SET[i]->can_reduce) printf("yes");
+            else printf("");
+//        printf("\n");
+            for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++j) {
+//            printf("(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
+                if (strlen(ALL_LR_ITEM_SET[i]->next[j].edge) > 0)
+                    fprintf(fp, "(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
+            }
+            fprintf(fp, "\n");
+//        printf("\ncore:\n");
+            for (int j = 0; j < ALL_LR_ITEM_SET[i]->core; ++j) {
+                int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
+//            printf("%d, %d, %c, %s\n", ALL_LR_ITEM_SET[i]->core, loc, ALL_LR_ITEM_SET[i]->item_set[j].item[loc], ALL_LR_ITEM_SET[i]->item_set[j].item);
+            }
+//        printf("\n");
+            for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt; ++j) {
+                int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
+//            printf("%d, %d, %c, %s\n", ALL_LR_ITEM_SET[i]->core, loc, ALL_LR_ITEM_SET[i]->item_set[j].item[loc], ALL_LR_ITEM_SET[i]->item_set[j].item);
+                fprintf(fp, "%d~%s\n", ALL_LR_ITEM_SET[i]->item_set[j].loc, ALL_LR_ITEM_SET[i]->item_set[j].item);
+            }
+//        printf("------------------------------\n");
+        }
+    }
+    fclose(fp);
+
     printf("analyse process:\n");
     syntax_analyse();
-    // for (int i = 0; i < stat_stk.idx; ++ i)
-    //     printf("%d ", stat_stk.stack[i]);
-    // printf("\n");
-    // for (int i = 0; i < char_stk.idx; ++ i)
-    //     printf("%s ", char_stk.stack[i]);
-    // printf("\n");
+    cout << "symbolTable" << endl;
+    for (auto & it : symbolTable)
+        cout << it.varName << " " << it.valueStr << " " << it.PLACE << endl;
+    cout << endl;
+    cout << "ENTRY" << endl;
+    for (auto & it : ENTRY)
+        cout << it.first << " " << it.second << endl;
+    cout << endl << tempVarNum << endl;
+    cout << "quads" << endl;
+    cout << "len:" << quads.size() << endl;
+//    for (const auto& q : quads)
+//        cout << "666:>" << symbolTable[q.arg1Index].varName << " "
+//        << q.op << " " << symbolTable[q.arg2Index].varName
+//        << " " << q.result.varName << endl;
+    out_quad(quads);
+
+
 }
