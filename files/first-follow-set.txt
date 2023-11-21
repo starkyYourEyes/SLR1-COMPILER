@@ -13,5 +13,5 @@ C:begin if id
 L:; 
 K:end begin if id 
 A:# ; 
-E:+ * / ) rop # ; then or and 
+E:+ $ * / ) rop # ; then or and 
 B:then or and ) 

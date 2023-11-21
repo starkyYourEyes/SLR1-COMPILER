@@ -72,6 +72,10 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
             printf("(%c, -, %d)\n", s[*loc], line);
             fprintf(fp_res, "(%c, -, %d)\n", s[*loc], line);
             break;
+        case'$':
+            printf("(%c, $, %d)\n", s[*loc], line);
+            fprintf(fp_res, "(%c, $, %d)\n", s[*loc], line);
+            break;
         case'*':
             printf("(%c, *, %d)\n", s[*loc], line);
             fprintf(fp_res, "(%c, *, %d)\n", s[*loc], line);
@@ -103,8 +107,7 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
                 fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
             } else {
                 -- *loc;
-                printf("(%c, not, %d)\n", s[*loc], line);
-                fprintf(fp_res, "(%c, not, %d)\n", s[*loc], line);
+                goto ERROR;
             }
             break;
         case'=':    // 即==，比较运算符

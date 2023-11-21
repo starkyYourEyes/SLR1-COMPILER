@@ -74,8 +74,7 @@ int main(int argc, char *argv[]){
     printf("\nslr1 analyse:\n");
     slr1_runner();
 
-
-
+    // symbol res = symbol{nullptr, nullptr, -1};
 
     return 0;
 }

@@ -8,6 +8,7 @@ L->K S
 K->L;
 A->id:=E
 E->E+E
+E->E$E
 E->E*E
 E->E/E
 E->-E
