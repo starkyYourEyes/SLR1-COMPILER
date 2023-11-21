@@ -1,0 +1,62 @@
+// else if (line == bbbb or line == bbbb + 1) { // B->B or B , B->B and B
+//                             string opt[4] = {"or", "and"};
+//                             symbol T = newtemp();
+//                             symbol B1 = char_stk.stack[char_stk.idx - 3];
+//                             symbol B2 = char_stk.stack[char_stk.idx - 1];
+//                             cout << "B1,B2:" << B1.varName << "," << B1.valueStr << "," << B1.PLACE << "|"
+//                                 << B2.varName << "," << B2.valueStr << "," << B2.PLACE << endl;
+//                             GEN(opt[line - bbbb], B1.PLACE, B2.PLACE, T);
+//                             PLACE = T.PLACE;
+//                             string top1 = semantic.top();
+//                             semantic.pop(); // 更新语义栈
+//                             string top2 = semantic.top();
+//                             semantic.pop();
+//                             // cout << "tops:" << top1 << " " << top2 << endl;
+//                             semantic.push(T.varName);
+//                             int Mgotostm = gotostm.top();
+//                             gotostm.pop();
+//                             if (opt[line - bbbb] == "or") {
+//                                 cout << "this is or, need huitian:" << Mgotostm << " " << quads[Mgotostm].result.varName << endl;
+//                                 cout << B1.varName << "," << B1.valueStr << "," << B1.PLACE << endl;
+//                                 if (symbolTable[B1.PLACE].falselist.size() == 0){
+//                                     cout << "symbolTable[B1.PLACE].falselist.size() == 0\n";
+//                                     cout << B1.PLACE << "-" << Mgotostm << " \n";
+//                                     // cout << symbolTable[B1.PLACE].falselist[0] << endl;
+//                                     symbolTable[B1.PLACE].falselist.push_back(Mgotostm);
+//                                     quads[symbolTable[B1.PLACE].falselist[0] - 1].arg1Index = Mgotostm;
+//                                 } else {
+//                                     cout << "!= 0 \n";
+//                                     for (auto &t : symbolTable[B1.PLACE].falselist){
+//                                         cout << "auto falselist:" << t << endl;
+//                                         t = Mgotostm;   // 往符号表里面回填
+//                                         quads[t - 1].arg1Index = Mgotostm;
+//                                         cout << "== 0\n";
+//                                     }
+//                                 }
+
+//                                 {
+//                                     cout << B1.PLACE << symbolTable[B1.PLACE].varName << " " << T.PLACE << endl;
+//                                     cout << "true:" ;
+//                                     for (auto t:symbolTable[B1.PLACE].truelist)
+//                                         cout << t << " ";
+//                                     cout << endl << "false:";
+//                                     for (auto t:symbolTable[B1.PLACE].falselist)
+//                                         cout << t << " ";
+//                                     cout << endl;
+//                                 }
+//                                 // for (auto &t : B1.falselist)
+//                                 //     t = Mgotostm;   // 回填
+//                                 symbolTable[T.PLACE].falselist = B2.falselist;
+//                                 // 把E1和E2的truelist交给T
+//                                 // merge[T.PLACE] = {B1.PLACE, B2.PLACE};
+
+//                             } else if (opt[line - bbbb] == "and") {
+//                                 cout << "this is and, need huitian:" << Mgotostm << " " << quads[Mgotostm].result.varName << endl;
+//                                 cout << B1.varName << "," << B1.valueStr << "," << B1.PLACE << endl;
+//                                 for (auto &t : symbolTable[B1.PLACE].truelist)
+//                                     t = Mgotostm;   // 往符号表里面回填
+//                                 for (auto &t : B1.truelist)
+//                                     t = Mgotostm;   // 回填
+//                                 T.truelist = B2.truelist;
+//                                 // merge[T.PLACE] = {B1.PLACE, B2.PLACE};
+//                             }
