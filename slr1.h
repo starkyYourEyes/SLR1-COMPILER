@@ -405,9 +405,6 @@ bool is_null_unite_sets(char *v1, char *v2){ // 判断两个vn的follow集是不
 void lr_table_generator(){ // 生成SLR1分析表
     // TABLE_ITEM是全局变量，默认初始化为0了
     memset(TABLE_ITEM, 0, COUNT * sizeof(struct table_item));
-    // for (int i = 0; i < V->len_vt; ++ i)
-    //     printf("%s, ", V->vt[i]);
-    // printf("\n");
     for (int i = 0; i < UID; ++ i){
         TABLE_ITEM[i].status = i;
         bool reduce = ALL_LR_ITEM_SET[i]->can_reduce;
@@ -438,9 +435,7 @@ void lr_table_generator(){ // 生成SLR1分析表
                     }
                 }
             }
-
             // 判断是否有包含关系 e.g. Follow(A) 包含 非终结符
-            
             for (int h = 0; h < num_ts; ++ h){
                 int is_error = 0;   // 不符合P139的条件，有两个及以上的可规约项目的follow集中包含同一个非终结符
                 for (int k = 0; k < num_rs; ++ k){
@@ -456,7 +451,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                             printf("%s is in follow set!", V->vt[ts[h]]);
                             exit(-1);
                         }
-                        
                     }
                 }   
             }
@@ -490,43 +484,67 @@ void lr_table_generator(){ // 生成SLR1分析表
                         for (int m = 0; m <= len; ++ m)
                             tmp2[m] = ALL_LR_ITEM_SET[i]->item_set[h].item[m];
                         tmp2[len + 1] = '\0';
-
                         if (!is_null_unite_sets(tmp1, tmp2)){
                             printf("%s %s follow set unite is not null!\n", tmp1, tmp2);
                             exit(-1);
                         }
                     }
                 }
-                // // 有规约-规约冲突，查看follow集，判断SLR1 能不能解决。
-                // printf("!!!reduce-reduce conflict!!!\n");
-                // // exit(-1);
             }
-                
         }
         for(int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++ j){
             char tmp[10];
             int no = get_vt_no(ALL_LR_ITEM_SET[i]->next[j].edge);
-            
             if (no != -1){
                 // 终结符，添加到ACTION
                 tmp[0] = 'S';
                 itoa(ALL_LR_ITEM_SET[i]->next[j].status, tmp + 1, 10);  // int to str
+                char save_r[MAX_LEN_PRODUCTION] = {0};
+                strcpy(save_r, TABLE_ITEM[i].ACTION[no]);
                 strcpy(TABLE_ITEM[i].ACTION[no], tmp);
                 // 移进-规约冲突的处理！
                 if (ALL_LR_ITEM_SET[i]->can_reduce){
                     for (int y = 0; y < num_rs; ++ y){
-                        // if (is_in_follow_set(, V->vt[no]))
-                    }
-                    int t = get_production_left(lines[which]);
-                    char tmp_vn[5] = {0};
-                    for (int p = 0; p <= t; ++ p) tmp_vn[p] = lines[which][p];
-                    tmp_vn[t + 1] = '\0';
-                    // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
-                    if (is_in_follow_set(tmp_vn, V->vt[no]) != -1){
-                        printf("vt in follow error!\n");
-                        exit(-1);
-                    } else {
-                        
+                        int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[y]].item);
+                        char tmp_vn[5] = {0};
+                        for (int p = 0; p <= t; ++ p) tmp_vn[p] = ALL_LR_ITEM_SET[i]->item_set[rs[y]].item[p];
+                        tmp_vn[t + 1] = '\0';
+                        // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
+                        if (is_in_follow_set(tmp_vn, V->vt[no]) != -1){
+                            // cout << "UID:" << i << " " << ALL_LR_ITEM_SET[i]->item_set[rs[y]].item << endl;
+                            bool can_solve = false;
+                            if (strlen(save_r) != 0){ // 尝试用优先级解决冲突, - * / not的优先级比较高
+                                char *iitem = ALL_LR_ITEM_SET[i]->item_set[rs[y]].item;
+                                for (int q = get_production_right(iitem); iitem[q]; ++ q){
+
+                                    if (iitem[q] == '-' || iitem[q] == '*' || iitem[q] == '/'){
+                                        can_solve = true;
+                                        // cout << strlen(iitem) << " " << "item:" << iitem << " " << "iitem[q]:" << iitem[q] << endl;
+                                        break;
+                                    } else if (iitem[q] == 'n' && iitem[q + 1] && iitem[q + 1] == 'o' && iitem[q + 2] && iitem[q + 2] == 't'){
+                                        can_solve = true;
+                                        break;
+                                    } else if (iitem[q] == 'o' && iitem[q + 1] && iitem[q + 1] == 'r') {
+                                        // and 和 or 的优先级无所谓
+                                        can_solve = true;
+                                        break;
+                                    } else if (iitem[q] == 'a' && iitem[q + 1] && iitem[q + 1] == 'n' && iitem[q + 2] && iitem[q + 2] == 'd') {
+                                        // and 和 or 的优先级无所谓
+                                        can_solve = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (can_solve) {
+                                // cout << "can_solve:" << save_r << endl;
+                                strcpy(TABLE_ITEM[i].ACTION[no], save_r);
+                                strcpy(ALL_LR_ITEM_SET[i]->next[j].edge, "");
+                            } else {
+                                // 利用优先级可以解决一切冲突 ！
+                            }
+                        } else {
+                            // do nothing
+                        }
                     }
                 }
                 // strcpy(TABLE_ITEM[i].ACTION[no], ALL_LR_ITEM_SET[i]->next[j].edge);    

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakePresetLoader">{
+  &quot;useNewFormat&quot;: true
+}</component>
+  <component name="CMakeReloadState">
+    <option name="reloaded" value="true" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated>
+      <config projectName="p" targetName="p" />
+    </generated>
+  </component>
+  <component name="CMakeSettings" AUTO_RELOAD="true">
+    <configurations>
+      <configuration PROFILE_NAME="Debug-MinGW" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="MinGW" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="08fd9a7c-fd07-47bc-bcbb-bd3fd80e37df" name="变更" comment="">
+      <change afterPath="$PROJECT_DIR$/.vscode/c_cpp_properties.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/code.txt" beforeDir="false" afterPath="$PROJECT_DIR$/files/code.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/item_set.txt" beforeDir="false" afterPath="$PROJECT_DIR$/files/item_set.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/lex_res.txt" beforeDir="false" afterPath="$PROJECT_DIR$/files/lex_res.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/slr1_process.txt" beforeDir="false" afterPath="$PROJECT_DIR$/files/slr1_process.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lexical.h" beforeDir="false" afterPath="$PROJECT_DIR$/lexical.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/slr1.h" beforeDir="false" afterPath="$PROJECT_DIR$/slr1.h" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug-MinGW" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$APPLICATION_HOME_DIR$/bin/mingw/x86_64-w64-mingw32/include/stdio.h" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectApplicationVersion">
+    <option name="ide" value="CLion" />
+    <option name="majorVersion" value="2022" />
+    <option name="minorVersion" value="2.1" />
+  </component>
+  <component name="ProjectId" id="2YNblAmJOxAed9dtbgMcA2R36v1" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "last_opened_file_path": "E:/frontend/p",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="p" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="$ProjectFileDir$/files/grammar.txt  $ProjectFileDir$/files/code.txt" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$ProjectFileDir$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="p" TARGET_NAME="p" CONFIG_NAME="Debug-MinGW" RUN_TARGET_PROJECT_NAME="p" RUN_TARGET_NAME="p">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="08fd9a7c-fd07-47bc-bcbb-bd3fd80e37df" name="变更" comment="" />
+      <created>1700369132885</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1700369132885</updated>
+      <workItem from="1700369135039" duration="293000" />
+      <workItem from="1700369444866" duration="14349000" />
+      <workItem from="1700384049628" duration="19655000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
