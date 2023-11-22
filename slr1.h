@@ -130,15 +130,17 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){
         ENTRY[result.varName] = result.PLACE;
     } else if (op == ":="){ 
         result.valueStr = symbolTable[arg1].valueStr;
-        // 布尔表达式的赋值运算需要临时变量，而算术表达式不需要！
+        
         if (symbolTable[arg1].varName == string("true") || symbolTable[arg1].varName == string("false")){
             result.PLACE = symbolTable.size();
             symbolTable.push_back(result);
             ENTRY[result.varName] = result.PLACE;
         }
-        for (auto &res : symbolTable)   // 回去填补symbolTable中变量的值
-            if (res.varName == result.varName)
-                res.valueStr = result.valueStr;
+        // if (result.rawName == "y") cout << "yeyesyes" << symbolTable[arg1].valueStr << endl;
+        symbolTable[ENTRY[result.rawName]].valueStr = symbolTable[arg1].valueStr;
+        // for (auto &res : symbolTable)   // 回去填补symbolTable中变量的值
+        //     if (res.varName == result.varName || res.varName == result.rawName)
+        //         res.valueStr = result.valueStr;
     } else if (op == "or"){
         result.PLACE = symbolTable.size();
         int res = -1;
@@ -765,7 +767,7 @@ bool is_declared(string& s){
     if (is_digit(s[0])) return true;
     if (is_alpha(s[0]))
         for (int i = 0; i < symbolTable.size() - 1; ++ i)
-            if (s == symbolTable[i].varName)
+            if (s == symbolTable[i].varName or s == symbolTable[i].rawName)
                 return true;
     return false;
 }
@@ -820,9 +822,14 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
             else tempSym.valueStr = string("_");                            // 起初标识符的值设置为 _ 
 
             // 记录读入的变量或者数值的PLACE（读入重复的标识符的处理！！！！to do）
-            tempSym.PLACE = symbolTable.size();         
-            symbolTable.push_back(tempSym);
-            ENTRY[tempSym.varName] = tempSym.PLACE;
+            
+            if (ENTRY.find(tempSym.varName) == ENTRY.end()){
+                tempSym.PLACE = symbolTable.size();      
+                symbolTable.push_back(tempSym);
+                ENTRY[tempSym.varName] = tempSym.PLACE;
+            } else {
+                tempSym = symbolTable[ENTRY[tempSym.varName]];
+            }
         } else { 
             if (now_get == "rop"){  // rop 类也有自己原来的值，rawName
                 string tmp_s = string(buf + 1);             
@@ -900,7 +907,6 @@ ACTION_S:
                                 cout << "line " << current_line + 1 << ": You can't assign value to a constant.\n";
                                 exit(-1);
                             } else if (!is_declared(E.rawName) and E.varName[0] != 'T' and !is_vn(E.varName[0])) {
-                                cout << "line " << current_line + 1 << ": '" << E.rawName << "' is not declared!\n";
                                 exit(-1);
                             }
 
@@ -912,9 +918,9 @@ ACTION_S:
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
                             // cout << "E1:" << E1.varName << ", " << E1.valueStr << ", " << E1.rawName << endl;
                             if (!is_declared(E1.rawName) and E1.varName[0] != 'T' and !is_vn(E1.varName[0])) {
-                                cout << "line " << current_line + 1 << ": '" << E1.rawName << "' is not declared!\n";
                                 exit(-1);
                             } else if (!is_declared(E2.rawName) and E2.varName[0] != 'T' and !is_vn(E2.varName[0])) {
+                                cout << E2.rawName << "," << E2.varName << "," << E2.valueStr << endl;
                                 cout << "line " << current_line + 1 << ": '" << E2.rawName << "' is not declared!\n";
                                 exit(-1);
                             }
@@ -942,14 +948,10 @@ ACTION_S:
                             res = char_stk.stack[char_stk.idx - 2];
                             PLACE = ENTRY[semantic.top()];
                         } else if (line == mmmm + 3){ // E->id
-                            res = symbolTable[symbolTable.size() - 1];
-                            PLACE = ENTRY[semantic.top()];
-                            if (!is_declared(res.rawName)) {
-                                cout << "line " << current_line + 1 << ": '" << res.rawName << "' is not declared!\n";
-                                exit(-1);
-                            }
+                            // symbol id = 
+                            res = char_stk.stack[char_stk.idx - 1];
+                            PLACE = res.PLACE;
                         } 
-                        
                         
 /*=============================------！布尔表达式！------=============================*/
                         else if (line == bbbb or line == bbbb + 1) { // B->B or B , B->B and B
@@ -1074,9 +1076,9 @@ ACTION_S:
 }
 
 void slr1_runner(){
-    FILE* fp = fopen("files/item_set.txt", "w");
+    FILE* fp = fopen("files/slr1_item_set.txt", "w");
     if (NULL == fp){
-        printf("open %s failed.\n", "files/item_set.txt\0");
+        printf("open %s failed.\n", "files/slr1_item_set.txt\0");
         exit(-1);
         return;
 	}
@@ -1090,21 +1092,31 @@ void slr1_runner(){
     lr_table_generator();
     // 输出slr1分析表
     printf("slr1 table:\n");
-    {    
+    {   FILE* fp_table = fopen("files/slr1_table.txt", "w");
+        if (fp_table == NULL) {
+            printf("write %s failed.", "files/slr1_table.txt");
+            exit(-1);
+        }
         printf("+------------------------------------------------------------------------------------------------------------------------------+\n");
         printf("|    |                                       ACTION                                            |              GOTO             |\n");
         printf("|----+-----------------------------------------------------------------------------------------+-------------------------------|\n");
         printf("|%4s|", "stat");
-        for (int i = 0; i < V->len_vt; ++ i)
+        for (int i = 0; i < V->len_vt; ++ i){
             printf("%3s|", V->vt[i]);
+            fprintf(fp_table, "%s ", V->vt[i]);
+        }
         // printf("%3s|", "#");
-        for (int i = 0; i < V->len_vn; ++ i)
+        for (int i = 0; i < V->len_vn; ++ i){
             printf(" %-2s|", V->vn[i]);
+            fprintf(fp_table, "%s ", V->vn[i]);
+        }
+        fprintf(fp_table, "\n");
         printf("\n");
         printf("|----+-----------------------------------------------------------------------------------------+-------------------------------|\n");
 
         for (int i = 0; i < UID; ++ i){
             printf("| %-2d |", TABLE_ITEM[i].status);
+            fprintf(fp_table, "%d|", TABLE_ITEM[i].status);
             int sep = 0;
             int back = 0;
             for (int j = 0; j < V->len_vt; ++ j){
@@ -1129,6 +1141,7 @@ void slr1_runner(){
                     back = x - sep;
                 }
                 printf("%s", TABLE_ITEM[i].ACTION[j]);
+                fprintf(fp_table, "%s|", TABLE_ITEM[i].ACTION[j]);
                 for (int x = 0; x < back; ++ x) printf(" ");
                 printf("|");
             }
@@ -1155,12 +1168,15 @@ void slr1_runner(){
                     back = x - sep;
                 }
                 printf("%s", TABLE_ITEM[i].GOTO[j]);
+                fprintf(fp_table, "%s|", TABLE_ITEM[i].GOTO[j]);
                 for (int x = 0; x < back; ++ x) printf(" ");
                 printf("|");
             }
             printf("\n");
+            fprintf(fp_table, "%\n");
         }
         printf("+------------------------------------------------------------------------------------------------------------------------------+\n");
+        fclose(fp_table);
     }
 
     // 将项目集写入到文件中

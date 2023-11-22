@@ -6,9 +6,9 @@
 */
 int main(int argc, char *argv[]){
 //    printf("%s\n", _pgmptr);
-    FILE* w_res = fopen("./files/first-follow-set.txt", "w"); // 将first集和follow集写入文件中
+    FILE* w_res = fopen("./files/slr1_first_follow_set.txt", "w"); // 将first集和follow集写入文件中
 	if (NULL == w_res){
-		printf("write %s failed.\n", "./files/first-follow-set.txt");
+		printf("write %s failed.\n", "./files/slr1_first_follow_set.txt");
 		return -1;
 	}
 	V = (struct CHARS *)malloc(sizeof(struct CHARS));

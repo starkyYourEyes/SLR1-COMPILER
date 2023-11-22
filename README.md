@@ -33,7 +33,7 @@ S语句,L复合语句,A赋值语句,E算术表达式,B布尔表达式,rop关系�
 
 ### 2.识别文法中的终结符和非终结符并计算first集和follow集
 1. 扫描文法文件，识别非终结符和终结符。  
-2. 分别计算first集和follow集并输出到文件first-follow-set.txt 
+2. 分别计算first集和follow集并输出到文件slr1_first_follow_set.txt
 
 ### 3.词法分析
 词法分析程序按行对源代码文件进行扫描，并识别出每一个单词和符号。所识别出的每一项为一个三元组，如`(begin, keyword, line_number)`，其中第一项为这个符号，第二项为这个符号的类别，第三项为所在行号——方便报错定位。  
