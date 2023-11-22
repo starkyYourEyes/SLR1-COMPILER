@@ -8,9 +8,10 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <iomanip>
 using namespace std;
 
-#define COUNT 96            // 最多有多少个项目集
+#define COUNT 128            // 最多有多少个项目集
 #define MAX_LEN_PRODUCTION 20
 
 #define MAX_STATUS_NEXT 20  // 每一个项目集通过移进而到达的新的项目集的最大个数
@@ -100,11 +101,6 @@ set<string> oprts = {"<", ">", "<=", ">=", "==", "!="};
 void GEN(const string& op, int arg1, int arg2, symbol &result){
     // 运算符、参数1在符号表的编号、参数2在符号表的编号，结果符号
     // 产生一个四元式，并填入四元式序列表
-    cout << "(" << op << ",";
-    arg1 != -1 ? cout << symbolTable[arg1].varName : cout << "_";
-    cout << ",";
-    arg2 != -1 ? cout << symbolTable[arg2].varName : cout << "_";
-    cout << "," << result.varName << ")" << endl;
     quads.push_back(quad{op, arg1, arg2, result}); //插入到四元式序列中
 
     if (op == "-") {        // 将临时变量result注册进入符号表
@@ -133,7 +129,6 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){
         symbolTable.push_back(result);
         ENTRY[result.varName] = result.PLACE;
     } else if (op == ":="){ 
-        cout << "GEN:" << arg1 << " " << symbolTable[arg1].valueStr << endl;
         result.valueStr = symbolTable[arg1].valueStr;
         // 布尔表达式的赋值运算需要临时变量，而算术表达式不需要！
         if (symbolTable[arg1].varName == string("true") || symbolTable[arg1].varName == string("false")){
@@ -144,8 +139,6 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){
         for (auto &res : symbolTable)   // 回去填补symbolTable中变量的值
             if (res.varName == result.varName)
                 res.valueStr = result.valueStr;
-        // cout << "res: " ;
-        // cout << result.varName << " " << result.valueStr << endl;
     } else if (op == "or"){
         result.PLACE = symbolTable.size();
         int res = -1;
@@ -177,34 +170,30 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){
         symbolTable.push_back(result);
         ENTRY[result.varName] = result.PLACE;
     } else if (op == "goto"){
-        // do nothing ?
+        // for no error report
     } else if (oprts.count(op)){
-        
+        // for no error report  
     } else{
-        cout << "unexpected operator!\n";
+        cout << "unexpected operator in GEN()!\n";
         exit(-1);
     }
 }
 
 void out_quad(vector<quad> &v){ // 输出所有的四元式
     // // 更新。
-    // for (auto &t : v){
-    //     t.result.truelist = symbolTable[t.result.PLACE].truelist;
-    //     t.result.falselist = symbolTable[t.result.PLACE].falselist;
-    // }
     int idx = 0;
     for (auto & quad : v){
         if (quad.op == "goto"){
-            cout << idx ++ << "===(" << quad.op << ",";
+            cout << setw(2) << idx ++ << ". (" << quad.op << ", ";
             quad.arg1Index != -1 ? cout << quad.arg1Index : cout << "_";
             cout << ")" << endl;
             continue;
         } 
-        cout << idx ++  << "===(" << quad.op << ",";
+        cout << setw(2) << idx ++  << ". (" << quad.op << ", ";
         quad.arg1Index != -1 ? cout << symbolTable[quad.arg1Index].varName : cout << "_";
-        cout << ",";
+        cout << ", ";
         quad.arg2Index != -1 ? cout << symbolTable[quad.arg2Index].varName : cout << "_";
-        cout << "," << quad.result.varName << ")" << endl;
+        cout << ", " << quad.result.varName << ")" << endl;
         if (symbolTable[ENTRY[quad.result.varName]].truelist.size()){
             cout << "truelist->";
             for (auto t : symbolTable[ENTRY[quad.result.varName]].truelist)
@@ -261,15 +250,12 @@ struct lr_item_set* init_lr_item_set(){ // 初始化一个lr_item_set并返回
     S->can_reduce = false;      // 是否可以规约，初始为false       
     // 将opearated置为false
     memset(S->item_set, 0, NUM_PER_SET * sizeof(struct lr_item));
-    // for (int i = 0; i < 10; ++ i)
-    //     if (!S->item_set[i].operated) printf("\n\nhhhhhhhhhhhhhhhhhh\n\n");
     // 将对应的next_status中的字符串置0
     memset(S->next, 0, MAX_STATUS_NEXT * (sizeof(struct next_status)));
     return S; 
 }
 void del_lr_item_set(struct lr_item_set **S){ // 删除一个项目集（有重复）
     UID --;     // UID为全局变量！
-    // printf("%s was freed!!\n", (*S)->item_set[0].item);
     free(*S);
 }
 int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项目集
@@ -277,21 +263,15 @@ int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项�
     // 判断是否有一样的项目集, 即核一样，在新增加完项目集并且把核添加进去了后判断。
     // 如果有重复的，就把重复的那个的UID返回回去
     // 无重复返回-1
-    // printf("\n+++++++++++++++++++++++++++++++++++++++++++++++++++\n");
     for (int i = 0; i < UID - 1; ++ i){ // < UID - 1, 因为不包括自己
         // 先找核中项目数一样的
         if (ALL_LR_ITEM_SET[i]->core == S->core){
-            // printf("in comp:%s, %s\n", ALL_LR_ITEM_SET[i]->item_set[0].item, S->item_set[0].item);
             bool flag[COUNT] = {false};
-            // printf("S-cnt:%d, A-cnt:%d\n", S->core, ALL_LR_ITEM_SET[i]->core);
-            // printf("'''''''''''''''''''''''''''''''''''''''''''''''''''''''''\n");
             for (int j = 0; j < S->core; ++ j){
                 for (int k = 0; k < ALL_LR_ITEM_SET[i]->core; ++ k){
                     if (ALL_LR_ITEM_SET[i]->item_set[k].loc == S->item_set[j].loc)
                         if (strcmp(ALL_LR_ITEM_SET[i]->item_set[k].item, S->item_set[j].item) == 0)
                             flag[j] = true;
-                    // printf("A: %d, %s\n", ALL_LR_ITEM_SET[i]->item_set[k].loc, ALL_LR_ITEM_SET[i]->item_set[k].item);
-                    // printf("B: %d, %s\n", S->item_set[j].loc, S->item_set[j].item);
                 }
             }
             int k;
@@ -300,25 +280,15 @@ int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项�
             if (k >= S->core) return i;
         }
     }
-    // printf("*********************************************************\n");
-    // printf("true!!!!!!!!!!!!!!\n");
     return -1;
 }
 void shift(struct lr_item_set* S);  // 函数声明，方便在expand()中调用
 void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
-    // printf("UID:%d, cnt:%d\n", S->status, S->cnt);
     int scnt = S->cnt;  // 循环过程中，S->cnt会发生改变！！！！
-    // for(int i = 0; i < S->cnt; ++ i){
-    //     printf("expand() %d, %1c, %s\n", S->item_set[i].loc, S->item_set[i].item[S->item_set[i].loc], S->item_set[i].item);
-    // }
-    // printf("???????????????????\n");
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
-        // 达到了末尾，即是一个规约状态（ LR(0), SLR(1)待定
         // to be optomized, to do
         char ch = S->item_set[i].item[loc]; 
-        // printf("ct_loc:%d, ch:%c, ct_produce:%s\n", loc, ch, S->item_set[i].item);
-
         if (ch == '\0') continue;
         // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
         if (is_vn(ch)) 
@@ -365,7 +335,6 @@ void shift(struct lr_item_set* S){ // 移进
        
         if (!is_front_repeated(S, tmp)){
             // 如果移进那个的字符没有重复，才新建一个项目集（新建项目集的依据！
-            // printf("tmp:%s\n", tmp);
             struct lr_item_set* new_set = init_lr_item_set();
             // 把信息复制过去
             S->next[S->cnt_next_status].status = new_set->status;   // UID记录
@@ -375,22 +344,15 @@ void shift(struct lr_item_set* S){ // 移进
             int core = 0;
             for (int j = 0; j < S->cnt; ++ j){
                 if (S->item_set[j].operated) continue;
-                // printf("comp:%s, %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
                 int a_loc = S->item_set[j].loc;
                 if (equal_prefix(tmp, S->item_set[j].item + S->item_set[j].loc)){
-                    // printf("%s equals %s\n", tmp, S->item_set[j].item + S->item_set[j].loc);
                     core ++;
                     strcpy(new_set->item_set[new_set->cnt].item, S->item_set[j].item);
                     int k;  // 跳过空格
                     for (k = a_loc + strlen(tmp); new_set->item_set[new_set->cnt].item[k] && new_set->item_set[new_set->cnt].item[k] == ' '; ++ k){};
                     new_set->item_set[new_set->cnt].loc = k;    // 更新loc
-                    // printf("%d, %d, %d == ", k, a_loc, strlen(tmp));
-                    // printf("!!!!! UID is:%d, a_loc:%d, %s\n", UID - 1, k, new_set->item_set[new_set->cnt].item);
                     new_set->cnt ++;
                     S->item_set[j].operated = true; // 标记为已经扫描过
-                    // printf("%s is operated!!!!!\n", tmp);
-                    // to be optimized. 
-                    // 并且如果扫描到了结尾了-----处理一下to do
                     int new_loc = new_set->item_set[new_set->cnt].loc;
                     if (S->item_set[i].item[new_loc] == '\0') {
                         // · 到结尾了to do
@@ -412,9 +374,7 @@ void shift(struct lr_item_set* S){ // 移进
                 del_lr_item_set(&new_set);
             }
             else expand(new_set);
-            // expand(new_set);
         }
-        
     }
 }
 
@@ -564,7 +524,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                         tmp_vn[t + 1] = '\0';
                         // 这个项目可以移进，但同时又是一个规约项目，shift-reduce conflict!
                         if (is_in_follow_set(tmp_vn, V->vt[no]) != -1){
-                            cout << "UID:" << i << " " << ALL_LR_ITEM_SET[i]->item_set[rs[y]].item << endl;
                             bool can_solve = false;
                             if (strlen(save_r) != 0){ // 尝试用优先级解决冲突, - * / not的优先级比较高
                                 char *iitem = ALL_LR_ITEM_SET[i]->item_set[rs[y]].item;
@@ -589,18 +548,16 @@ void lr_table_generator(){ // 生成SLR1分析表
                                 }
                             }
                             if (can_solve) {
-                                cout << "can_solve:" << save_r << endl;
                                 strcpy(TABLE_ITEM[i].ACTION[no], save_r);
                                 strcpy(ALL_LR_ITEM_SET[i]->next[j].edge, "");
                             } else {
-                                // 利用优先级可以解决一切冲突 ！
+                                // 利用优先级可以 《人工》解决一切冲突 ！
                             }
                         } else {
                             // do nothing
                         }
                     }
                 }
-                // strcpy(TABLE_ITEM[i].ACTION[no], ALL_LR_ITEM_SET[i]->next[j].edge);    
             } else if ((no = get_vn_no(ALL_LR_ITEM_SET[i]->next[j].edge)) != -1){
                 // 非终结符，添加到GOTO
                 itoa(ALL_LR_ITEM_SET[i]->next[j].status, tmp, 10);  // int to str
@@ -761,7 +718,6 @@ OR_AND:
         if (quads[e].op == "goto") quads[e].arg1Index = gotostm;
         else quads[e].result.varName = to_string(gotostm);
 }
-
 vector<int> merge(vector<int>& v1, vector<int>& v2){
     vector<int> ans;
     ans.insert(ans.end(), v1.begin(), v1.end());
@@ -893,7 +849,6 @@ ACTION_S:
                             symbol E, id;
                             E = char_stk.stack[char_stk.idx - 1];
                             id = char_stk.stack[char_stk.idx - 3];
-                            cout << line << ":" << lines[line] << endl;
                             GEN(":=", E.PLACE, -1, id);
                         } else if (line >= nnnn + 1 && line <= mmmm){ // E->E+$*/E
                             string opt[4] = {"+", "$", "*", "/"};
@@ -963,10 +918,6 @@ ACTION_S:
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
                             res = symbol{"_"};
-                            cout << E1.varName << " " << E2.varName << endl;
-                            cout << E1.rawName << " " << E2.rawName << endl;
-                            cout << E1.valueStr << " " << E2.valueStr << endl;
-                            
                             // 得到语义栈顶的两个元素
                             string e2_name = semantic.top();
                             semantic.pop();
@@ -996,12 +947,8 @@ ACTION_S:
                             // 回填false链，
                             while (stk_symbol_before_then.size()){
                                 symbol symbol_before_then = stk_symbol_before_then.top();
-                                if (symbol_before_then.falselist.size()){
-                                    for (auto t: symbol_before_then.falselist)
-                                        cout << t << ",";
-                                    cout << endl;
+                                if (symbol_before_then.falselist.size())
                                     backpatch(symbol_before_then.falselist, quads.size(), "or");
-                                }
                                 // 至此，所有的true与falselist都已经填好了，直接全部pop
                                 stk_symbol_before_then.pop();
                             }
@@ -1142,12 +1089,11 @@ void slr1_runner(){
         printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
     }
 
+    // 将项目集写入到文件中
     {
         for (int i = 0; i < UID; ++i) {
 //        printf("UID:%d  ", i);
             fprintf(fp, "%d\n", i);
-            if (ALL_LR_ITEM_SET[i]->can_reduce) printf("yes");
-            else printf("");
 //        printf("\n");
             for (int j = 0; j < ALL_LR_ITEM_SET[i]->cnt_next_status; ++j) {
 //            printf("(%s, %d) ", ALL_LR_ITEM_SET[i]->next[j].edge, ALL_LR_ITEM_SET[i]->next[j].status);
@@ -1173,25 +1119,17 @@ void slr1_runner(){
 
     printf("analyse process:\n");
     syntax_analyse();
-    cout << "symbolTable" << endl;
+    cout << "\nsymbolTable" << endl;
     for (auto & it : symbolTable)
         cout << it.varName << " " << it.valueStr << " " << it.PLACE << " " << it.truelist.size() << " " << it.falselist.size()  << endl;
     cout << endl;
     cout << "ENTRY" << endl;
     for (auto & it : ENTRY)
         cout << it.first << " " << it.second << endl;
-    cout << endl << tempVarNum << endl;
-    cout << "quads" << endl;
-    cout << "len:" << quads.size() << endl;
-//    for (const auto& q : quads)
-//        cout << "666:>" << symbolTable[q.arg1Index].varName << " "
-//        << q.op << " " << symbolTable[q.arg2Index].varName
-//        << " " << q.result.varName << endl;
+
+    cout << "\nquads.(len) = " << quads.size() << endl;
+
     out_quad(quads);
-    symbol demo;
-    cout << "demo.PLACE:" << demo.PLACE << endl;
-    // int x = 2, y = 33;
-    // swap(x, y);
-    // cout << x << " " << y ;
+
 
 }
