@@ -1,5 +1,14 @@
 begin 
         x:=2;
         y:=4;
+        p:=1+2*3/(4$5)$2+(-9);
         if x > y
+        then 
+                z := 5;
+        if x > 3 and z > 2
+        then 
+                begin 
+                        y:=1;
+                        q:=4;
+                end;
 end#

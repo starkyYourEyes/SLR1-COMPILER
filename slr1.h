@@ -180,33 +180,42 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){
 }
 
 void out_quad(vector<quad> &v){ // 输出所有的四元式
-    // // 更新。
+    FILE* fp = fopen("files/quads.txt", "w");
+    if (fp == NULL) {
+        printf("write %s failed.", "files/quads.txt");
+        exit(-1);
+    }
     int idx = 0;
     for (auto & quad : v){
         if (quad.op == "goto"){
-            cout << setw(2) << idx ++ << ". (" << quad.op << " ,";
+            cout << setw(2) << idx ++ << ". (" << quad.op << ", ";
             quad.arg1Index != -1 ? cout << quad.arg1Index : cout << "_";
             cout << ")" << endl;
+            fprintf(fp, "%d.(goto, %d)\n", idx - 1, quad.arg1Index);
             continue;
         } 
-        cout << setw(2) << idx ++  << ". (" << quad.op << " ,";
-        quad.arg1Index != -1 ? cout << symbolTable[quad.arg1Index].varName : cout << "_";
-        cout << " ,";
-        quad.arg2Index != -1 ? cout << symbolTable[quad.arg2Index].varName : cout << "_";
-        cout << " ," << quad.result.varName << ")" << endl;
-        if (symbolTable[ENTRY[quad.result.varName]].truelist.size()){
-            cout << "truelist->";
-            for (auto t : symbolTable[ENTRY[quad.result.varName]].truelist)
-                cout << t << " ";
-            cout << endl;
+        cout << setw(2) << idx ++  << ". (" << quad.op << ", ";
+        fprintf(fp, "%d.(%s, ", idx - 1, quad.op.c_str());
+        if (quad.arg1Index != -1) {
+            cout << symbolTable[quad.arg1Index].varName;
+            fprintf(fp, "%s, ", symbolTable[quad.arg1Index].varName.c_str());
+        } else {    
+            cout << "_";
+            fprintf(fp, "_, ");
         }
-        if (symbolTable[ENTRY[quad.result.varName]].falselist.size()){
-            cout << "falselist->";
-            for (auto t : symbolTable[ENTRY[quad.result.varName]].falselist)
-                cout << t << " ";
-            cout << endl;
+        cout << ", ";
+        if (quad.arg2Index != -1) {
+            cout << symbolTable[quad.arg2Index].varName;
+            fprintf(fp, "%s, ", symbolTable[quad.arg2Index].varName.c_str());
+        } else {    
+            cout << "_";
+            fprintf(fp, "_, ");
         }
+        fprintf(fp, "%s)\n", quad.result.varName.c_str());
+        cout << ", " << quad.result.varName << ")" << endl;
     }
+    fclose(fp);
+
 }
 
 int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几个产生式
