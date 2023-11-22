@@ -1,4 +1,0 @@
-"U:\xue\clion\CLion 2022.2.1\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=U:/xue/clion/CLion 2022.2.1/bin/ninja/win/ninja.exe" -G Ninja -S E:\frontend\p -B E:\frontend\p\cmake-build-debug-mingw
--- Configuring done
--- Generating done
--- Build files have been written to: E:/frontend/p/cmake-build-debug-mingw
