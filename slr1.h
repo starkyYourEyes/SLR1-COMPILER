@@ -96,7 +96,7 @@ symbol newtemp(){ //生成新的临时变量
     return symbol{string("T" + to_string(tempVarNum))};
 }
 set<string> oprts = {"<", ">", "<=", ">=", "==", "!="};
-
+// map<string, string> check_syntax_missing;
 
 void GEN(const string& op, int arg1, int arg2, symbol &result){
     // 运算符、参数1在符号表的编号、参数2在符号表的编号，结果符号
@@ -184,16 +184,16 @@ void out_quad(vector<quad> &v){ // 输出所有的四元式
     int idx = 0;
     for (auto & quad : v){
         if (quad.op == "goto"){
-            cout << setw(2) << idx ++ << ". (" << quad.op << ", ";
+            cout << setw(2) << idx ++ << ". (" << quad.op << " ,";
             quad.arg1Index != -1 ? cout << quad.arg1Index : cout << "_";
             cout << ")" << endl;
             continue;
         } 
-        cout << setw(2) << idx ++  << ". (" << quad.op << ", ";
+        cout << setw(2) << idx ++  << ". (" << quad.op << " ,";
         quad.arg1Index != -1 ? cout << symbolTable[quad.arg1Index].varName : cout << "_";
-        cout << ", ";
+        cout << " ,";
         quad.arg2Index != -1 ? cout << symbolTable[quad.arg2Index].varName : cout << "_";
-        cout << ", " << quad.result.varName << ")" << endl;
+        cout << " ," << quad.result.varName << ")" << endl;
         if (symbolTable[ENTRY[quad.result.varName]].truelist.size()){
             cout << "truelist->";
             for (auto t : symbolTable[ENTRY[quad.result.varName]].truelist)
@@ -640,29 +640,56 @@ char *get_input(char buf[]){ // 获取分析过程中面临的输入
     return s;
 }
 
+string missing_check(){
+    int cnt_then = 0, cnt_if = 0, cnt_begin = 0, cnt_end = 0;
+    for (int i = char_stk.idx - 1; i >= 0; -- i){
+        if (char_stk.stack[i].varName == "then") cnt_then ++;
+        else if (char_stk.stack[i].varName == "if") cnt_if ++;
+        else if (char_stk.stack[i].varName == "begin") cnt_begin ++;
+        else if (char_stk.stack[i].varName == "end") cnt_end ++;
+    }
+    if (cnt_begin == cnt_end && cnt_if == cnt_then) return "";
+    else if (cnt_if > cnt_then) return "then";
+    else if (cnt_if < cnt_then) return "if";
+    else if (cnt_begin > cnt_end) return "end";
+    else if (cnt_begin < cnt_end)  return "begin";
+    return "";
+}
+
 char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中的下一个动作，ACTION or GOTO
     // mode == 1 表示是查ACTION表
     // mode == 0 表示是查GOTO  表
     if (mode == 1){         // S
         int in_no = get_vt_no(input);
         if (strlen(TABLE_ITEM[ct].ACTION[in_no]) == 0) {
+            map<string, string> p;
+            p["end"] = "begin", p["begin"] = "end";
+            p["if"] = "then", p["then"] = "if";
             strcpy(analyses[_STEP].str_now, input);
             printf("error step:\n");
             fprintf(analyse_res, "error step:\n");
             out_slr1_table_item();
-            printf("line %d:an error occured when finding S%d, to:%s\n", current_line, ct, input);
-            printf("syntax error!%s", input);
+            printf("syntax error!\n");
+            string missing_res = missing_check();
+            if (missing_res == "") printf("line %d: An error occured before '%s'!\n", current_line + 1, input);
+            else printf("line %d: missing '%s' after '%s'.", current_line, missing_res.c_str(), p[missing_res].c_str());
             exit(-1);
         }
         return TABLE_ITEM[ct].ACTION[in_no];
     } else if (mode == 0) { // r
         int in_no = get_vn_no(input);
                 if (strlen(TABLE_ITEM[ct].GOTO[in_no]) == 0) {
+            map<string, string> p;
+            p["end"] = "begin", p["begin"] = "end";
+            p["if"] = "then", p["then"] = "if";
             printf("error step:\n");
             strcpy(analyses[_STEP].str_now, input);
             out_slr1_table_item();
-            printf("line %d:an error occured when finding GOTO %d, to:%s\n", current_line, ct, input);
-            printf("syntax error!%s", input);
+            // printf("line %d:an error occured when finding GOTO %d, to:%s\n", current_line, ct, input);
+            printf("syntax error!\n");
+            string missing_res = missing_check();
+            if (missing_res == "") printf("line %d: An error occured before '%s'!\n", current_line + 1, input);
+            else printf("line %d: missing '%s' after '%s'.", current_line, missing_res.c_str(), p[missing_res].c_str());
             exit(-1);
         }
         return TABLE_ITEM[ct].GOTO[in_no];
@@ -724,6 +751,16 @@ vector<int> merge(vector<int>& v1, vector<int>& v2){
     ans.insert(ans.end(), v2.begin(), v2.end());
     return ans;
 }
+
+bool is_declared(string& s){
+    if (is_digit(s[0])) return true;
+    if (is_alpha(s[0]))
+        for (int i = 0; i < symbolTable.size() - 1; ++ i)
+            if (s == symbolTable[i].varName)
+                return true;
+    return false;
+}
+
 void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
     _STEP = 0;
     // 读入词法分析的结果并进行语法分析
@@ -753,12 +790,13 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
         input = get_input(buf);     // 当前面临的输入
         current_line = get_current_line(buf);
         if (input == NULL) {
-            printf("line %d: error in get_input()!\n", current_line);
+            printf("line %d: error in get_input()!\n", current_line + 1);
             exit(-1);
         }
         
         string now_get = string(input); //读头符号
         symbol tempSym;
+        tempSym.rawName = now_get;
         // 将id, int和true、false登记到符号表
         if (now_get == "id" || now_get == "true" || now_get == "false"){
             string tmp_s = string(buf + 1);             
@@ -849,12 +887,28 @@ ACTION_S:
                             symbol E, id;
                             E = char_stk.stack[char_stk.idx - 1];
                             id = char_stk.stack[char_stk.idx - 3];
+                            if (is_digit(id.rawName[0]) or id.rawName == "true" or id.rawName == "false"){
+                                cout << "line " << current_line + 1 << ": You can't assign value to a constant.\n";
+                                exit(-1);
+                            } else if (!is_declared(E.rawName) and E.varName[0] != 'T' and !is_vn(E.varName[0])) {
+                                cout << "line " << current_line + 1 << ": '" << E.rawName << "' is not declared!\n";
+                                exit(-1);
+                            }
+
                             GEN(":=", E.PLACE, -1, id);
                         } else if (line >= nnnn + 1 && line <= mmmm){ // E->E+$*/E
                             string opt[4] = {"+", "$", "*", "/"};
                             symbol T = newtemp();
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
+                            // cout << "E1:" << E1.varName << ", " << E1.valueStr << ", " << E1.rawName << endl;
+                            if (!is_declared(E1.rawName) and E1.varName[0] != 'T' and !is_vn(E1.varName[0])) {
+                                cout << "line " << current_line + 1 << ": '" << E1.rawName << "' is not declared!\n";
+                                exit(-1);
+                            } else if (!is_declared(E2.rawName) and E2.varName[0] != 'T' and !is_vn(E2.varName[0])) {
+                                cout << "line " << current_line + 1 << ": '" << E2.rawName << "' is not declared!\n";
+                                exit(-1);
+                            }
                             GEN(opt[line - (nnnn + 1)], E1.PLACE, E2.PLACE, T);
                             semantic.pop(); // 更新语义栈
                             semantic.pop();
@@ -865,6 +919,10 @@ ACTION_S:
                         } else if (line == mmmm + 1){ // E-> -E
                             symbol T = newtemp();
                             symbol E1 = char_stk.stack[char_stk.idx - 1];
+                            if (!is_declared(E1.rawName) and E1.varName[0] != 'T' and !is_vn(E1.varName[0])) {
+                                cout << "line " << current_line + 1 << ": '" << E1.rawName << "' is not declared!\n";
+                                exit(-1);
+                            }
                             semantic.pop();
                             semantic.push(T.varName);
                             GEN("-", E1.PLACE, -1, T);
@@ -875,8 +933,12 @@ ACTION_S:
                             res = char_stk.stack[char_stk.idx - 2];
                             PLACE = ENTRY[semantic.top()];
                         } else if (line == mmmm + 3){ // E->id
-                            res = symbolTable[ENTRY[semantic.top()]];
+                            res = symbolTable[symbolTable.size() - 1];
                             PLACE = ENTRY[semantic.top()];
+                            if (!is_declared(res.rawName)) {
+                                cout << "line " << current_line + 1 << ": '" << res.rawName << "' is not declared!\n";
+                                exit(-1);
+                            }
                         } 
                         
                         
@@ -991,7 +1053,10 @@ ACTION_S:
         }
 	}
 	out_slr1_table_item();
-    if (!syntax_success) printf("missing '#' at the end of the text!\n");
+    if (!syntax_success) {
+        printf("missing '#' at the end of source code file!\n");
+        exit(-1);
+    }
     if (0 == feof){
 		printf("fgets error\n"); // 未读到文件末尾
 		return;
@@ -1017,9 +1082,9 @@ void slr1_runner(){
     // 输出slr1分析表
     printf("slr1 table:\n");
     {    
-        printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
-        printf("|    |                                     ACTION                                          |              GOTO             |\n");
-        printf("|----+-------------------------------------------------------------------------------------+-------------------------------|\n");
+        printf("+------------------------------------------------------------------------------------------------------------------------------+\n");
+        printf("|    |                                       ACTION                                            |              GOTO             |\n");
+        printf("|----+-----------------------------------------------------------------------------------------+-------------------------------|\n");
         printf("|%4s|", "stat");
         for (int i = 0; i < V->len_vt; ++ i)
             printf("%3s|", V->vt[i]);
@@ -1027,7 +1092,7 @@ void slr1_runner(){
         for (int i = 0; i < V->len_vn; ++ i)
             printf(" %-2s|", V->vn[i]);
         printf("\n");
-        printf("|----+-------------------------------------------------------------------------------------+-------------------------------|\n");
+        printf("|----+-----------------------------------------------------------------------------------------+-------------------------------|\n");
 
         for (int i = 0; i < UID; ++ i){
             printf("| %-2d |", TABLE_ITEM[i].status);
@@ -1086,7 +1151,7 @@ void slr1_runner(){
             }
             printf("\n");
         }
-        printf("+--------------------------------------------------------------------------------------------------------------------------+\n");
+        printf("+------------------------------------------------------------------------------------------------------------------------------+\n");
     }
 
     // 将项目集写入到文件中
@@ -1128,7 +1193,6 @@ void slr1_runner(){
         cout << it.first << " " << it.second << endl;
 
     cout << "\nquads.(len) = " << quads.size() << endl;
-
     out_quad(quads);
 
 
