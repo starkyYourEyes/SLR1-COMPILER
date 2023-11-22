@@ -1,5 +1,5 @@
 begin   
-        if 1 > 2 or 3 < 5
+        if 1 > 2 or (3 < 5 and 2 > 1)
         then
         if 2 < 4
         then x:=1+23*1+5/5;

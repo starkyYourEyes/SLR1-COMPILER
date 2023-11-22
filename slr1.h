@@ -96,8 +96,6 @@ symbol newtemp(){ //生成新的临时变量
 }
 set<string> oprts = {"<", ">", "<=", ">=", "==", "!="};
 
-vector<symbol> rop_res;     // 保存一些rop的结果 -> 可以得到truelist
-
 
 void GEN(const string& op, int arg1, int arg2, symbol &result){
     // 运算符、参数1在符号表的编号、参数2在符号表的编号，结果符号
@@ -108,9 +106,7 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){
     arg2 != -1 ? cout << symbolTable[arg2].varName : cout << "_";
     cout << "," << result.varName << ")" << endl;
     quads.push_back(quad{op, arg1, arg2, result}); //插入到四元式序列中
-//    cout << "place: " << result.PLACE << endl;
-    cout << "GEN:\n";
-    cout << "ct_op:" << op << endl;
+
     if (op == "-") {        // 将临时变量result注册进入符号表
         result.PLACE = symbolTable.size();
         result.valueStr = "-" + symbolTable[arg1].valueStr;
@@ -760,28 +756,12 @@ void backpatch(vector<int>& v, int gotostm, string from=""){    // 回填
         else if (oprts.count(tmp_quad.op)) quads[ls].result.varName = to_string(gotostm);
     }  
     return;
-
 OR_AND:
-    if (v.size() == 0) {
-        cout << "size == 0\n";
-        v.push_back(gotostm);
-        // quads[gotostm].arg1Index = gotostm;
-        return;
-    } else {
-        cout << "notice that: list is not empty!!!!\n"; 
-        for (const auto &e : v){
-            if (quads[e].op == "goto") {
-                cout << quads[e].arg1Index << "huitian(,)" << gotostm << endl;
-                quads[e].arg1Index = gotostm;
-            } else {
-                cout << quads[e].arg1Index << "huitian(,,,)" << gotostm << endl;
-                quads[e].result.varName = to_string(gotostm);
-            }
-            
-        }
-    }
-    
+    for (const auto &e : v)
+        if (quads[e].op == "goto") quads[e].arg1Index = gotostm;
+        else quads[e].result.varName = to_string(gotostm);
 }
+
 vector<int> merge(vector<int>& v1, vector<int>& v2){
     vector<int> ans;
     ans.insert(ans.end(), v1.begin(), v1.end());
@@ -805,8 +785,8 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
     char buf[LINE_MAX];   
     stack<int> gotostm;     // M.gotostm
     stack<string> semantic; // 语义栈
-    symbol symbol_before_then; // 用S->CS进行规约之前的那个symbol
-    stack<symbol> stk_symbol_before_then;   // 用于嵌套的if
+    stack<symbol> stk_symbol_before_then;   // 用于if的回填
+
     char *input;            // 当前读入的字符
     char *next_st;          // 下一个状态
     while (fgets(buf, LINE_MAX, lex_reader)){
@@ -822,42 +802,32 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
         }
         
         string now_get = string(input); //读头符号
-        string name = string(input);// 记录id在四元式中的中应该有的名字，而不应都是id
         symbol tempSym;
         // 将id, int和true、false登记到符号表
         if (now_get == "id" || now_get == "true" || now_get == "false"){
             string tmp_s = string(buf + 1);             
-            tmp_s = tmp_s.substr(0, tmp_s.find(','));   // tmps取实际值，数字or标识符
+            tmp_s = tmp_s.substr(0, tmp_s.find(','));   // tmps取实际值)(词法分析结果的三元组中的第一项)，数字or标识符
             semantic.push(tmp_s); // 语义栈
             tempSym.rawName = tmp_s;
             // 将语义加入符号表，并添加入口地址映射
             tempSym.varName = tmp_s;
-            if (is_digit(tmp_s.at(0)))      // 数字
-                tempSym.valueStr = tmp_s;
-            else if (strcmp(input, "true\0") == 0) {    // bool true
-                tempSym.valueStr = "1";
-                name = input;
-            } else if (strcmp(input, "false\0") == 0){  // bool false
-                tempSym.valueStr = "0";
-                name = input;
-            } else {
-                tempSym.valueStr = string("_");         // 起初标识符的值设置为 _ 
-                name = tmp_s;
-            }
+            if (is_digit(tmp_s.at(0))) tempSym.valueStr = tmp_s;            // 数字 
+            else if (strcmp(input, "true\0") == 0) tempSym.valueStr = "1";  // bool true
+            else if (strcmp(input, "false\0") == 0) tempSym.valueStr = "0"; // bool false 
+            else tempSym.valueStr = string("_");                            // 起初标识符的值设置为 _ 
+
             // 记录读入的变量或者数值的PLACE（读入重复的标识符的处理！！！！to do）
             tempSym.PLACE = symbolTable.size();         
             symbolTable.push_back(tempSym);
             ENTRY[tempSym.varName] = tempSym.PLACE;
         } else { 
-            cout << "ct_input:" << input << endl;
-            if (now_get == "rop"){
+            if (now_get == "rop"){  // rop 类也有自己原来的值，rawName
                 string tmp_s = string(buf + 1);             
                 tmp_s = tmp_s.substr(0, tmp_s.find(','));   // 实际的符号，< > >= <= == 
                 tempSym.valueStr = tmp_s;       // input == < > <= >= ...
-            }   
+            }
             tempSym.varName = string(input);    //
         }
-
         if (_STEP == 0){     // 第一次，进行初始化，状态初始为0，符号栈初始为 # 
             analyses[_STEP].step = _STEP;   
             stat_stk.stack[stat_stk.idx] = 0;
@@ -883,21 +853,16 @@ ACTION_S:
                 out_slr1_table_item();
                 stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
                 char_stk.stack[char_stk.idx ++] = tempSym;
-                // to do ???
+                // or/and/then 入栈要记录一下位置，方便回填
                 if (tempSym.varName == "or") {
-                    cout << "or enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置, 回填
                 } else if (tempSym.varName == "then"){
                     // then 入栈了，可以回填truelist
                     stk_symbol_before_then.push(char_stk.stack[char_stk.idx - 2]);
-                    symbol_before_then = char_stk.stack[char_stk.idx - 2];
-                    cout << "debug true:" << symbol_before_then.varName << "," << symbol_before_then.valueStr << "," << symbol_before_then.truelist.size() << "," << symbol_before_then.falselist.size() << endl;
-                    if (symbol_before_then.truelist.size())
-                        backpatch(symbol_before_then.truelist, quads.size());
-                    cout << "then enter char_stk!" << quads.size() << endl;
+                    if (stk_symbol_before_then.top().truelist.size())
+                        backpatch(stk_symbol_before_then.top().truelist, quads.size());
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
                 } else if (tempSym.varName == "and"){
-                    cout << "and enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
                 }
                 _STEP ++;
@@ -912,7 +877,7 @@ ACTION_S:
                     char tmp[2] = {0};  // 规约得到的非终结符
                     tmp[0] = lines[line][left], tmp[1] = '\0';
                     int top = stat_stk.stack[stat_stk.idx - num - 1];
-                    next_st = get_next_status(top, tmp, 0);   // 查GOTO表
+                    next_st = get_next_status(top, tmp, 0);     // 查GOTO表
                     strcpy(analyses[_STEP].Goto, next_st);
                     out_slr1_table_item();
 
@@ -920,10 +885,8 @@ ACTION_S:
                     int nnnn = 8;       // 算术表达式
                     int mmmm = 12;      // 算术表达式
                     int bbbb = mmmm + 4;// 布尔表达式
-
                     int PLACE = -1;     // 这个PLACE用来赋值给规约之后的栈顶的符号！
 
-                    symbol next_lists;  // 记录true链false链next链
                     symbol res;         // 记录表达式计算过后的结果
                         // 算数&布尔表达式的语义计算
                         if (line == nnnn){ // A->id:=E, A为赋值语句
@@ -932,7 +895,6 @@ ACTION_S:
                             id = char_stk.stack[char_stk.idx - 3];
                             cout << line << ":" << lines[line] << endl;
                             GEN(":=", E.PLACE, -1, id);
-                            name = "id";
                         } else if (line >= nnnn + 1 && line <= mmmm){ // E->E+$*/E
                             string opt[4] = {"+", "$", "*", "/"};
                             symbol T = newtemp();
@@ -968,30 +930,18 @@ ACTION_S:
                             string opt[4] = {"or", "and"};
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
-                            cout << E1.varName << " " << E2.varName << endl;
-                            cout << E1.rawName << " " << E2.rawName << endl;
-                            cout << E1.valueStr << " " << E2.valueStr << endl;
-                            cout << E1.truelist.size() << " " << E2.truelist.size() << endl;
-                            cout << E1.falselist.size() << " " << E2.falselist.size() << endl;
                             if (opt[line - bbbb] == "or"){
-                                cout << "this is an or!!!\n";
                                 if (gotostm.empty()) {
                                     cout << "error, no gotostm yet\n";
                                     exit(-1);
                                 }
-                                cout << "gotostm stk size:" << gotostm.size() << endl;
-                                cout << "now goto stm is:" << gotostm.top() << endl;
-                                cout << "quads.size:" << quads.size() << endl;
                                 backpatch(E1.falselist, gotostm.top(), "or");
                                 gotostm.pop();
                                 // merge
                                 res = symbol{"_"};
                                 res.truelist = merge(E1.truelist, E2.truelist);
                                 res.falselist  = E2.falselist;
-                                cout << "res.truelist:" << res.truelist.size() << ", " << res.truelist[0] << "," << res.truelist[1] << endl;
-                                cout << "res.falselist:" << res.falselist.size() << ", " << res.falselist[0] << endl;
                             } else {
-                                cout << "this is an and!!!\n";
                                 if (gotostm.empty()) {
                                     cout << "error, no gotostm yet\n";
                                     exit(-1);
@@ -1003,78 +953,45 @@ ACTION_S:
                                 res.falselist = merge(E1.falselist, E2.falselist);
                                 res.truelist  = E2.truelist;
                             }
-
-
                         } else if (line == bbbb + 2) { // B->not B
-                            res = symbolTable[ENTRY[semantic.top()]];
-                            swap(res.truelist, res.falselist);
-                            PLACE = res.PLACE;
-                            // symbol T = newtemp();
-                            // symbol E1 = char_stk.stack[char_stk.idx - 1];
-                            // semantic.pop();
-                            // semantic.push(T.varName);
-                            // GEN("not", E1.PLACE, -1, T);
-                            // PLACE = T.PLACE;
-                            // T.truelist = E1.falselist, T.falselist = E1.truelist;
-                        
+                            symbol t = char_stk.stack[char_stk.idx - 1];
+                            res.truelist = t.falselist, res.falselist = t.truelist, PLACE = t.PLACE; 
                         } else if (line == bbbb + 3) { // B->(B)
-                            res = symbolTable[ENTRY[semantic.top()]];
-                            PLACE = res.PLACE;
-                            // next_lists.truelist = char_stk.stack[char_stk.idx - 2].truelist;
-                            // next_lists.falselist = char_stk.stack[char_stk.idx - 2].falselist;
+                            symbol t = char_stk.stack[char_stk.idx - 2];
+                            res.truelist = t.truelist, res.falselist = t.falselist, PLACE = t.PLACE; 
                         } else if (line == bbbb + 4) { // B->E rop E impotanct
-                            // symbol T = newtemp();
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
                             res = symbol{"_"};
                             cout << E1.varName << " " << E2.varName << endl;
                             cout << E1.rawName << " " << E2.rawName << endl;
                             cout << E1.valueStr << " " << E2.valueStr << endl;
-
+                            
+                            // 得到语义栈顶的两个元素
                             string e2_name = semantic.top();
                             semantic.pop();
                             string e1_name = semantic.top();
                             semantic.pop();
+                            // 将这两个元素放回去
                             semantic.push(e1_name); semantic.push(e2_name);
-                            cout << "zheshism:" << char_stk.stack[char_stk.idx - 2].varName << " " << char_stk.stack[char_stk.idx - 2].valueStr << endl;
                             string opr = char_stk.stack[char_stk.idx - 2].valueStr;
                             res.truelist.push_back(quads.size());
                             res.falselist.push_back(quads.size() + 1);
-                            if (now_get == "then")
-                                rop_res.push_back(res);
-                            
+
                             GEN(opr, ENTRY[e1_name], ENTRY[e2_name], res);
                             GEN("goto", -1, -1, tempSym);   // tempSym没什么用
-                        
+        
                         } else if (line == bbbb + 5 or line == bbbb + 6) { // B->true, B->false
                             symbol tmp_sym;
                             res = symbolTable[ENTRY[semantic.top()]];
-                            if (line == bbbb + 5)   // B-> true
-                                res.truelist.push_back(quads.size()); // 添加true链
-                            else 
-                                res.falselist.push_back(quads.size());// false链
+                            if (line == bbbb + 5) res.truelist.push_back(quads.size()); // 添加true链
+                            else res.falselist.push_back(quads.size());                 // false链
                             GEN("goto", -1, -1, tmp_sym);   // tmp_sym仅仅是一个占位作用
-                            // symbol E1 = char_stk.stack[char_stk.idx - 1];
-                            // cout << E1.valueStr << " " << E1.varName << endl;
-                            // cout << "E1 place:" << E1.PLACE << endl;
-                            // cout << "enter:" << ENTRY[E1.varName] << endl;
                             PLACE = res.PLACE;  
                         } else if (line == 4) { // C -> if B then 
-                            // 因为B是bool表达式，所以此时的
+                            // 因为B是bool表达式，此时回填truelist
                             symbol tmp_huitian = char_stk.stack[char_stk.idx - 2];
-                            cout << "tmp_huitian:" << tmp_huitian.varName << " " << tmp_huitian.valueStr << " " << tmp_huitian.PLACE << " size:" << tmp_huitian.truelist.size() << " " << tmp_huitian.falselist.size() << endl;
-                            cout << "Truelist:";
-                            for (auto &t : tmp_huitian.truelist)
-                                cout << t << " ";
-                            cout << endl;
-                            cout << "Falselist:";
-                            for (auto &t : tmp_huitian.falselist)
-                                cout << t << " ";
-                            cout << endl;
-                            cout << "quads_size:" << quads.size() << endl;
-
                             backpatch(tmp_huitian.truelist, quads.size(), "or");
-                            cout << "goto 0:" << quads[0].op << "," << quads[0].arg1Index << endl;
                         } else if (line == 1) { // S -> CS 即S-> if B then S,得到falselist
                             // 回填false链，
                             while (stk_symbol_before_then.size()){
@@ -1085,35 +1002,27 @@ ACTION_S:
                                     cout << endl;
                                     backpatch(symbol_before_then.falselist, quads.size(), "or");
                                 }
+                                // 至此，所有的true与falselist都已经填好了，直接全部pop
                                 stk_symbol_before_then.pop();
                             }
                         }
                     
                     stat_stk.idx -= num, char_stk.idx -= num;   // 出栈！
                     // 把规约之后的结果保存到栈顶，同时对于规约后的字符的名字不能修改（还是产生式左边的终结符varName = string(tmp)
-                    if ((res.PLACE != -1) || res.truelist.size() || res.falselist.size()) {
-                        if (res.truelist.size() || res.falselist.size()) cout << "slkvchjxkbhoesiegnjs" << endl;
+                    if ((res.PLACE != -1) || res.truelist.size() || res.falselist.size()) 
                         char_stk.stack[char_stk.idx] = res, char_stk.stack[char_stk.idx ++].varName = string(tmp);
-                    }
                     else char_stk.stack[char_stk.idx ++].varName = string(tmp), char_stk.stack[char_stk.idx - 1].PLACE = PLACE;
   
-                    if (next_lists.truelist.size()) char_stk.stack[char_stk.idx - 1].truelist = next_lists.truelist;
-                    if (next_lists.falselist.size()) char_stk.stack[char_stk.idx - 1].falselist = next_lists.falselist;
-                    
-
                     strcpy(analyses[_STEP].str_now, input);
-
                     top = stat_stk.stack[stat_stk.idx - 1];
                     next_st = get_next_status(top, tmp, 0);   // 查GOTO表
                     strcpy(analyses[_STEP].Goto, next_st);
                     stat_stk.stack[stat_stk.idx ++] = atoi(next_st);
-
                     next_st = get_next_status(stat_stk.stack[stat_stk.idx - 1], input, 1);
                     _STEP ++;
                 }
 
 /*================================！over！================================*/
-
                 if (next_st[0] == 'S') goto ACTION_S;
                 else if (next_st[0] == 'a') {   // 规约之后可以接受了！
                     strcpy(analyses[_STEP].Action, "acc\0");
@@ -1136,7 +1045,6 @@ ACTION_S:
 	}
 	out_slr1_table_item();
     if (!syntax_success) printf("missing '#' at the end of the text!\n");
-    
     if (0 == feof){
 		printf("fgets error\n"); // 未读到文件末尾
 		return;
