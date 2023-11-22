@@ -43,7 +43,7 @@
 (3, id, 7)
 (and, and, 7)
 (z, id, 7)
-(>, rop, 7)
+(==, rop, 7)
 (2, id, 7)
 (then, then, 8)
 (begin, begin, 9)

@@ -17,7 +17,7 @@ using namespace std;
 #define MAX_STATUS_NEXT 20  // 每一个项目集通过移进而到达的新的项目集的最大个数
 #define NUM_PER_SET 20      // 每一个项目集中最多的项目数
 #define MAX_STACK_SIZE 128
-#define MAX_STEP 1024       // 分析过程的最大步骤数
+#define MAX_STEP 512       // 分析过程的最大步骤数
 struct next_status{
     int status;                     // 指向的下一个项目集的UID
     char edge[MAX_LEN_VT];          // 通过那条边指向下一个项目集，即通过什么字符到达的
@@ -68,14 +68,13 @@ class symbol {
         int PLACE{-1};           // 该变量在符号表中的位置,初始化为-1
         vector<int> truelist;    // 值为真所指向的四元式的标号
         vector<int> falselist;   // 值为假所指向的四元式的标号
-        vector<int> nextlist;    // nextlist--指向的跳转的位置
-        string rawName{""};      // 没规约之前的名字
+        string rawName{""};      // 规约之前的名字，原始名字，123, <, >...
 };
-struct quad {      // 四元式结构体
-    string op;     // 操作符
-    int arg1Index; // 源操作数1的符号表地址
-    int arg2Index; // 源操作数2的符号表地址
-    symbol result; // 目的操作数
+struct quad {           // 四元式
+    string op;          // 操作符
+    int arg1Index;      // 源操作数1的符号表地址
+    int arg2Index;      // 源操作数2的符号表地址
+    symbol result;      // 目的操作数
 };
 
 struct status_stack{    // 状态栈
@@ -87,18 +86,17 @@ struct char_stack{      // 符号栈
     symbol stack[MAX_STACK_SIZE];
 } char_stk;
 
-vector<quad> quads; //四元式序列
-vector<symbol> symbolTable;      //符号表
-map<string, int> ENTRY;          //用于查变量的符号表入口地址
-int tempVarNum = 0;              //临时变量个数
-symbol newtemp(){ //生成新的临时变量
+vector<quad> quads;         // 四元式序列
+vector<symbol> symbolTable; // 符号表
+map<string, int> ENTRY;     // 用于查变量的符号表入口地址
+int tempVarNum = 0;         // 临时变量个数
+symbol newtemp(){           // 生成新的临时变量
     tempVarNum ++;
     return symbol{string("T" + to_string(tempVarNum))};
 }
-set<string> oprts = {"<", ">", "<=", ">=", "==", "!="};
-// map<string, string> check_syntax_missing;
+set<string> oprts = {"<", ">", "<=", ">=", "==", "!="}; // map--rop
 
-void GEN(const string& op, int arg1, int arg2, symbol &result){
+void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个四元式
     // 运算符、参数1在符号表的编号、参数2在符号表的编号，结果符号
     // 产生一个四元式，并填入四元式序列表
     quads.push_back(quad{op, arg1, arg2, result}); //插入到四元式序列中
@@ -405,7 +403,6 @@ int get_production_no(char *prod){ // 获取产生式的编号
     return -1;
 }
 int is_in_follow_set(char *vn, char *s){ // 判断vn的follow集包不包含s
-    // printf("vn:%s\n", vn);
     int no = get_vn_no(vn);
     if (no == -1){
         printf("find vn is:%s\n", vn);
@@ -651,7 +648,7 @@ char *get_input(char buf[]){ // 获取分析过程中面临的输入
     return s;
 }
 
-string missing_check(){
+string missing_check(){ // if和then搭配，begin和end搭配，那你呢
     int cnt_then = 0, cnt_if = 0, cnt_begin = 0, cnt_end = 0;
     for (int i = char_stk.idx - 1; i >= 0; -- i){
         if (char_stk.stack[i].varName == "then") cnt_then ++;
@@ -742,7 +739,7 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     return res;
 }
 
-void backpatch(vector<int>& v, int gotostm, string from=""){    // 回填
+void backpatch(vector<int>& v, int gotostm, string from=""){ // 回填
     if (from == "or" || from == "and") goto OR_AND; // 布尔表达式的回填
 
     for (auto ls:v){    // if 语句的回填
@@ -756,15 +753,15 @@ OR_AND:
         if (quads[e].op == "goto") quads[e].arg1Index = gotostm;
         else quads[e].result.varName = to_string(gotostm);
 }
-vector<int> merge(vector<int>& v1, vector<int>& v2){
+vector<int> merge(vector<int>& v1, vector<int>& v2){ // 两个链 merge
     vector<int> ans;
     ans.insert(ans.end(), v1.begin(), v1.end());
     ans.insert(ans.end(), v2.begin(), v2.end());
     return ans;
 }
 
-bool is_declared(string& s){
-    if (is_digit(s[0])) return true;
+bool is_declared(string& s){ // 查看符号表中是否有这个符号
+    if (is_digit(s[0])) return true;    // 跳过数字
     if (is_alpha(s[0]))
         for (int i = 0; i < symbolTable.size() - 1; ++ i)
             if (s == symbolTable[i].varName or s == symbolTable[i].rawName)
@@ -1075,7 +1072,7 @@ ACTION_S:
     fclose(lex_reader);
 }
 
-void slr1_runner(){
+void slr1_runner(){ // SLR1分析，启动！
     FILE* fp = fopen("files/slr1_item_set.txt", "w");
     if (NULL == fp){
         printf("open %s failed.\n", "files/slr1_item_set.txt\0");
@@ -1209,16 +1206,17 @@ void slr1_runner(){
 
     printf("analyse process:\n");
     syntax_analyse();
+
     cout << "\nsymbolTable" << endl;
     for (auto & it : symbolTable)
         cout << it.varName << " " << it.valueStr << " " << it.PLACE << " " << it.truelist.size() << " " << it.falselist.size()  << endl;
     cout << endl;
+
     cout << "ENTRY" << endl;
     for (auto & it : ENTRY)
         cout << it.first << " " << it.second << endl;
 
     cout << "\nquads.(len) = " << quads.size() << endl;
     out_quad(quads);
-
 
 }

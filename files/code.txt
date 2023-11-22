@@ -5,7 +5,7 @@ begin
         if x > y
         then 
                 z := 5;
-        if x > 3 and z > 2
+        if x > 3 and z == 2
         then 
                 begin 
                         y:=1;
