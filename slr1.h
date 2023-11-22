@@ -58,7 +58,7 @@ struct analysis_item{
     char Action[ITEM_LEN];      // ACTION
     char Goto[ITEM_LEN];        // GOTO
 } analyses[MAX_STEP];
-
+bool syntax_success = false;
 
 class symbol {
     public:
@@ -68,6 +68,7 @@ class symbol {
         vector<int> truelist;    // 值为真所指向的四元式的标号
         vector<int> falselist;   // 值为假所指向的四元式的标号
         vector<int> nextlist;    // nextlist--指向的跳转的位置
+        string rawName{""};      // 没规约之前的名字
 };
 struct quad {      // 四元式结构体
     string op;     // 操作符
@@ -94,6 +95,14 @@ symbol newtemp(){ //生成新的临时变量
     return symbol{string("T" + to_string(tempVarNum))};
 }
 set<string> oprts = {"<", ">", "<=", ">=", "==", "!="};
+
+
+vector<symbol> rop_res;     // 保存一些rop的结果 -> 可以得到truelist
+// stack<int> if_list;         // 一个if-list一定对应一个then，也就对应一个then_false_list
+// stack<int> then_false_list; // 可以得到falselist
+
+
+
 
 void GEN(const string& op, int arg1, int arg2, symbol &result){
     // 运算符、参数1在符号表的编号、参数2在符号表的编号，结果符号
@@ -192,14 +201,15 @@ void out_quad(vector<quad> &v){ // 输出所有的四元式
     //     t.result.truelist = symbolTable[t.result.PLACE].truelist;
     //     t.result.falselist = symbolTable[t.result.PLACE].falselist;
     // }
+    int idx = 0;
     for (auto & quad : v){
         if (quad.op == "goto"){
-            cout << "===(" << quad.op << ",";
+            cout << idx ++ << "===(" << quad.op << ",";
             quad.arg1Index != -1 ? cout << quad.arg1Index : cout << "_";
             cout << ")" << endl;
             continue;
         } 
-        cout << "===(" << quad.op << ",";
+        cout << idx ++  << "===(" << quad.op << ",";
         quad.arg1Index != -1 ? cout << symbolTable[quad.arg1Index].varName : cout << "_";
         cout << ",";
         quad.arg2Index != -1 ? cout << symbolTable[quad.arg2Index].varName : cout << "_";
@@ -746,19 +756,63 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     return res;
 }
 // to be optimized------to do !!!!!
-void backpatch(vector<int>& v, int gotostm){    // 回填
+void backpatch(vector<int>& v, int gotostm, string from=""){    // 回填
+    if (from == "or" || from == "and") goto OR_AND;
+    if (is_digit(from[0])) goto DIRECT_BACKFILL;
+    cout << "normal backpatch\n";
+    if (rop_res.size()) {
+        cout << "rop_res size:" << rop_res.size() << endl;
+        if (rop_res.back().truelist.size()){
+            cout << "huitianlo:" << rop_res.back().truelist[0] << endl;
+            auto tmp_quad = quads[rop_res.back().truelist[0]];
+            if (tmp_quad.op == "goto") {
+                quads[rop_res.back().truelist[0]].arg1Index = gotostm;
+                cout << "goto\n";
+            }
+            else if (oprts.count(tmp_quad.op)) {
+                quads[rop_res.back().truelist[0]].result.varName = to_string(gotostm);
+                cout << quads[0].result.varName << " " << gotostm << endl;
+                cout << rop_res.back().truelist[0] << "not goto\n";
+            }
+            rop_res.back().truelist.pop_back();
+            return;
+        }
+    }
+    return;
+DIRECT_BACKFILL:
+    cout << "DIRECT_BACKFILL\n";
+    // 这里一定是一个(goto, _)
+    quads[stoi(from)].arg1Index = gotostm;
+    // then_false_list.pop();
+    // if_list.pop();
+    return;
+OR_AND:
+    cout << "use backpatch, and gotostm is:" << gotostm << "\n";
     if (v.size() == 0) {
+        cout << "size == 0\n";
         v.push_back(gotostm);
         // quads[gotostm].arg1Index = gotostm;
         return;
     } else {
         cout << "notice that: list is not empty!!!!\n"; 
         for (const auto &e : v){
-            cout << quads[e].arg1Index << "huitian" << gotostm << endl;
-            quads[e].arg1Index = gotostm;
+            if (quads[e].op == "goto") {
+                cout << quads[e].arg1Index << "huitian(,)" << gotostm << endl;
+                quads[e].arg1Index = gotostm;
+            } else {
+                cout << quads[e].arg1Index << "huitian(,,,)" << gotostm << endl;
+                quads[e].result.varName = to_string(gotostm);
+            }
+            
         }
     }
     
+}
+vector<int> merge(vector<int>& v1, vector<int>& v2){
+    vector<int> ans;
+    ans.insert(ans.end(), v1.begin(), v1.end());
+    ans.insert(ans.end(), v2.begin(), v2.end());
+    return ans;
 }
 void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
     _STEP = 0;
@@ -777,9 +831,8 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
     char buf[LINE_MAX];   
     stack<int> gotostm;     // M.gotostm
     stack<string> semantic; // 语义栈
-
-    // map<int, vector<int>> merge;    // PLACE为第一个元素的接管了PLACE为vector中元素的list
-
+    symbol symbol_before_then; // 用S->CS进行规约之前的那个symbol
+    stack<symbol> stk_symbol_before_then;   // 用于嵌套的if
     char *input;            // 当前读入的字符
     char *next_st;          // 下一个状态
     while (fgets(buf, LINE_MAX, lex_reader)){
@@ -802,7 +855,7 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
             string tmp_s = string(buf + 1);             
             tmp_s = tmp_s.substr(0, tmp_s.find(','));   // tmps取实际值，数字or标识符
             semantic.push(tmp_s); // 语义栈
-
+            tempSym.rawName = tmp_s;
             // 将语义加入符号表，并添加入口地址映射
             tempSym.varName = tmp_s;
             if (is_digit(tmp_s.at(0)))      // 数字
@@ -821,9 +874,13 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
             tempSym.PLACE = symbolTable.size();         
             symbolTable.push_back(tempSym);
             ENTRY[tempSym.varName] = tempSym.PLACE;
-        } else {    
-            if (oprts.count(string(input))){}   // 读入了rop  to do ???
-                tempSym.valueStr = input;       // input == < > <= >= ...
+        } else { 
+            cout << "ct_input:" << input << endl;
+            if (now_get == "rop"){
+                string tmp_s = string(buf + 1);             
+                tmp_s = tmp_s.substr(0, tmp_s.find(','));   // 实际的符号，< > >= <= == 
+                tempSym.valueStr = tmp_s;       // input == < > <= >= ...
+            }   
             tempSym.varName = string(input);    //
         }
 
@@ -835,7 +892,7 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
             char *next_st = get_next_status(stat_stk.stack[stat_stk.idx], input, 1);
             strcpy(analyses[_STEP].Action, next_st);
             stat_stk.idx ++;
-            out_slr1_table_item();
+            out_slr1_table_item();      // 遇到的第一个符号一定是begin！
             stat_stk.stack[stat_stk.idx ++] = atoi(next_st + 1);
             char_stk.stack[char_stk.idx ++] = tempSym;
             _STEP ++;    // 遇到非终结符，直接_STEP + 1 
@@ -857,11 +914,20 @@ ACTION_S:
                     cout << "or enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置, 回填
                 } else if (tempSym.varName == "then"){
+                    // then 入栈了，可以回填truelist
+                    stk_symbol_before_then.push(char_stk.stack[char_stk.idx - 2]);
+                    symbol_before_then = char_stk.stack[char_stk.idx - 2];
+                    cout << "debug true:" << symbol_before_then.varName << "," << symbol_before_then.valueStr << "," << symbol_before_then.truelist.size() << "," << symbol_before_then.falselist.size() << endl;
+                    if (symbol_before_then.truelist.size())
+                        backpatch(symbol_before_then.truelist, quads.size());
+                    // if_list.push(quads.size() - 1);
                     cout << "then enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
                 } else if (tempSym.varName == "and"){
                     cout << "and enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
+                } else if (tempSym.varName == "if"){ // 记录if的数目
+                    // if_list.push(quads.size());
                 }
 
                 _STEP ++;
@@ -924,8 +990,6 @@ ACTION_S:
                         } else if (line == mmmm + 3){ // E->id
                             res = symbolTable[ENTRY[semantic.top()]];
                             PLACE = ENTRY[semantic.top()];
-                        
-                        
                         } 
                         
                         
@@ -934,6 +998,11 @@ ACTION_S:
                             string opt[4] = {"or", "and"};
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
+                            cout << E1.varName << " " << E2.varName << endl;
+                            cout << E1.rawName << " " << E2.rawName << endl;
+                            cout << E1.valueStr << " " << E2.valueStr << endl;
+                            cout << E1.truelist.size() << " " << E2.truelist.size() << endl;
+                            cout << E1.falselist.size() << " " << E2.falselist.size() << endl;
                             if (opt[line - bbbb] == "or"){
                                 cout << "this is an or!!!\n";
                                 if (gotostm.empty()) {
@@ -942,77 +1011,30 @@ ACTION_S:
                                 }
                                 cout << "gotostm stk size:" << gotostm.size() << endl;
                                 cout << "now goto stm is:" << gotostm.top() << endl;
-                                backpatch(E1.falselist, gotostm.top());
+                                cout << "quads.size:" << quads.size() << endl;
+                                // vector<int> tmp_list;
+                                backpatch(E1.falselist, gotostm.top(), "or");
+                                
                                 gotostm.pop();
+                                // merge
+                                res = symbol{"_"};
+                                res.truelist = merge(E1.truelist, E2.truelist);
+                                res.falselist  = E2.falselist;
+                                cout << "res.truelist:" << res.truelist.size() << ", " << res.truelist[0] << "," << res.truelist[1] << endl;
+                                cout << "res.falselist:" << res.falselist.size() << ", " << res.falselist[0] << endl;
                             } else {
                                 cout << "this is an and!!!\n";
                                 if (gotostm.empty()) {
                                     cout << "error, no gotostm yet\n";
                                     exit(-1);
                                 }
-                                backpatch(E1.truelist, gotostm.top());
+                                backpatch(E1.truelist, gotostm.top(), "and");
                                 gotostm.pop();
+                                // merge
+                                res = symbol{"_"};
+                                res.falselist = merge(E1.falselist, E2.falselist);
+                                res.truelist  = E2.truelist;
                             }
-                            // symbol T = newtemp();
-                            // symbol B1 = char_stk.stack[char_stk.idx - 3];
-                            // symbol B2 = char_stk.stack[char_stk.idx - 1];
-                            // cout << "B1,B2:" << B1.varName << "," << B1.valueStr << "," << B1.PLACE << "|"
-                            //     << B2.varName << "," << B2.valueStr << "," << B2.PLACE << endl;
-                            // GEN(opt[line - bbbb], B1.PLACE, B2.PLACE, T);
-                            // PLACE = T.PLACE;
-                            // string top1 = semantic.top();
-                            // semantic.pop(); // 更新语义栈
-                            // string top2 = semantic.top();
-                            // semantic.pop();
-                            // // cout << "tops:" << top1 << " " << top2 << endl;
-                            // semantic.push(T.varName);
-                            // int Mgotostm = gotostm.top();
-                            // gotostm.pop();
-                            // if (opt[line - bbbb] == "or") {
-                            //     cout << "this is or, need huitian:" << Mgotostm << " " << quads[Mgotostm].result.varName << endl;
-                            //     cout << B1.varName << "," << B1.valueStr << "," << B1.PLACE << endl;
-                            //     if (symbolTable[B1.PLACE].falselist.size() == 0){
-                            //         cout << "symbolTable[B1.PLACE].falselist.size() == 0\n";
-                            //         cout << B1.PLACE << "-" << Mgotostm << " \n";
-                            //         // cout << symbolTable[B1.PLACE].falselist[0] << endl;
-                            //         symbolTable[B1.PLACE].falselist.push_back(Mgotostm);
-                            //         quads[symbolTable[B1.PLACE].falselist[0] - 1].arg1Index = Mgotostm;
-                            //     } else {
-                            //         cout << "!= 0 \n";
-                            //         for (auto &t : symbolTable[B1.PLACE].falselist){
-                            //             cout << "auto falselist:" << t << endl;
-                            //             t = Mgotostm;   // 往符号表里面回填
-                            //             quads[t - 1].arg1Index = Mgotostm;
-                            //             cout << "== 0\n";
-                            //         }
-                            //     }
-
-                            //     {
-                            //         cout << B1.PLACE << symbolTable[B1.PLACE].varName << " " << T.PLACE << endl;
-                            //         cout << "true:" ;
-                            //         for (auto t:symbolTable[B1.PLACE].truelist)
-                            //             cout << t << " ";
-                            //         cout << endl << "false:";
-                            //         for (auto t:symbolTable[B1.PLACE].falselist)
-                            //             cout << t << " ";
-                            //         cout << endl;
-                            //     }
-                            //     // for (auto &t : B1.falselist)
-                            //     //     t = Mgotostm;   // 回填
-                            //     symbolTable[T.PLACE].falselist = B2.falselist;
-                            //     // 把E1和E2的truelist交给T
-                            //     // merge[T.PLACE] = {B1.PLACE, B2.PLACE};
-
-                            // } else if (opt[line - bbbb] == "and") {
-                            //     cout << "this is and, need huitian:" << Mgotostm << " " << quads[Mgotostm].result.varName << endl;
-                            //     cout << B1.varName << "," << B1.valueStr << "," << B1.PLACE << endl;
-                            //     for (auto &t : symbolTable[B1.PLACE].truelist)
-                            //         t = Mgotostm;   // 往符号表里面回填
-                            //     for (auto &t : B1.truelist)
-                            //         t = Mgotostm;   // 回填
-                            //     T.truelist = B2.truelist;
-                            //     // merge[T.PLACE] = {B1.PLACE, B2.PLACE};
-                            // }
 
 
                         } else if (line == bbbb + 2) { // B->not B
@@ -1036,14 +1058,26 @@ ACTION_S:
                             // symbol T = newtemp();
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
-                            symbol res = symbol{"_"};
+                            res = symbol{"_"};
                             cout << E1.varName << " " << E2.varName << endl;
-                            cout << "zheshism:" << char_stk.stack[char_stk.idx - 2].varName << endl;
-                            string opr = char_stk.stack[char_stk.idx - 2].varName;
-                            cout << "kono rop is:" << opr << endl;
-                            GEN(opr, ENTRY[E1.varName], ENTRY[E2.varName], res);
-                            GEN("goto", -1, -1, tempSym);   // tempSym没什么用
+                            cout << E1.rawName << " " << E2.rawName << endl;
+                            cout << E1.valueStr << " " << E2.valueStr << endl;
 
+                            string e2_name = semantic.top();
+                            semantic.pop();
+                            string e1_name = semantic.top();
+                            semantic.pop();
+                            semantic.push(e1_name); semantic.push(e2_name);
+                            cout << "zheshism:" << char_stk.stack[char_stk.idx - 2].varName << " " << char_stk.stack[char_stk.idx - 2].valueStr << endl;
+                            string opr = char_stk.stack[char_stk.idx - 2].valueStr;
+                            res.truelist.push_back(quads.size());
+                            res.falselist.push_back(quads.size() + 1);
+                            if (now_get == "then")
+                                rop_res.push_back(res);
+                            
+                            GEN(opr, ENTRY[e1_name], ENTRY[e2_name], res);
+                            GEN("goto", -1, -1, tempSym);   // tempSym没什么用
+                        
                         } else if (line == bbbb + 5 or line == bbbb + 6) { // B->true, B->false
                             symbol tmp_sym;
                             res = symbolTable[ENTRY[semantic.top()]];
@@ -1056,13 +1090,54 @@ ACTION_S:
                             // cout << E1.valueStr << " " << E1.varName << endl;
                             // cout << "E1 place:" << E1.PLACE << endl;
                             // cout << "enter:" << ENTRY[E1.varName] << endl;
-
                             PLACE = res.PLACE;  
+                        } else if (line == 4) { // C -> if B then 
+                            // 因为B是bool表达式，所以此时的
+                            symbol tmp_huitian = char_stk.stack[char_stk.idx - 2];
+                            cout << "tmp_huitian:" << tmp_huitian.varName << " " << tmp_huitian.valueStr << " " << tmp_huitian.PLACE << " size:" << tmp_huitian.truelist.size() << " " << tmp_huitian.falselist.size() << endl;
+                            cout << "Truelist:";
+                            for (auto &t : tmp_huitian.truelist)
+                                cout << t << " ";
+                            cout << endl;
+                            cout << "Falselist:";
+                            for (auto &t : tmp_huitian.falselist)
+                                cout << t << " ";
+                            cout << endl;
+                            cout << "quads_size:" << quads.size() << endl;
+
+                            backpatch(tmp_huitian.truelist, quads.size(), "or");
+                            cout << "goto 0:" << quads[0].op << "," << quads[0].arg1Index << endl;
+                        } else if (line == 1) { // S -> CS 即S-> if B then S,得到falselist
+                            // 回填false链，
+                            while (stk_symbol_before_then.size()){
+                                symbol symbol_before_then = stk_symbol_before_then.top();
+                                if (symbol_before_then.falselist.size()){
+                                    for (auto t: symbol_before_then.falselist)
+                                        cout << t << ",";
+                                    cout << endl;
+                                    backpatch(symbol_before_then.falselist, quads.size(), "or");
+                                }
+                                stk_symbol_before_then.pop();
+                            }
+                            
+                            
+                            // cout << "use S-> if B then S" << "   " ;
+                            // symbol b = char_stk.stack[char_stk.idx - 1];
+                            // cout << b.varName << ", " << b.rawName << ", " << b.valueStr << ", " << b.truelist.size() << ", " << b.falselist.size() << endl;
+                            // cout << semantic.top() << endl;
+                            // // 并且，和最近的if搭配。！！
+                            // then_false_list.push(quads.size());
+                            // vector<int> tmp;    // 无意义的占位
+                            // backpatch(tmp, then_false_list.top(), to_string(if_list.top()));
+                        
                         }
                     
                     stat_stk.idx -= num, char_stk.idx -= num;   // 出栈！
                     // 把规约之后的结果保存到栈顶，同时对于规约后的字符的名字不能修改（还是产生式左边的终结符varName = string(tmp)
-                    if (res.PLACE != -1) char_stk.stack[char_stk.idx] = res, char_stk.stack[char_stk.idx ++].varName = string(tmp);
+                    if ((res.PLACE != -1) || res.truelist.size() || res.falselist.size()) {
+                        if (res.truelist.size() || res.falselist.size()) cout << "slkvchjxkbhoesiegnjs" << endl;
+                        char_stk.stack[char_stk.idx] = res, char_stk.stack[char_stk.idx ++].varName = string(tmp);
+                    }
                     else char_stk.stack[char_stk.idx ++].varName = string(tmp), char_stk.stack[char_stk.idx - 1].PLACE = PLACE;
   
                     if (next_lists.truelist.size()) char_stk.stack[char_stk.idx - 1].truelist = next_lists.truelist;
@@ -1079,30 +1154,31 @@ ACTION_S:
                     next_st = get_next_status(stat_stk.stack[stat_stk.idx - 1], input, 1);
                     _STEP ++;
                 }
-                
-/*================================！语法分析 + 语法制导的语义分析！================================*/
 
-
-
-
+/*================================！over！================================*/
 
                 if (next_st[0] == 'S') goto ACTION_S;
                 else if (next_st[0] == 'a') {   // 规约之后可以接受了！
                     strcpy(analyses[_STEP].Action, "acc\0");
                     out_slr1_table_item();
                     printf("accepted!\n");
+                    syntax_success = true;
+                    return;
                 }
             } else if (next_st[0] == 'a') {     // 判断是不是acc, 也许没用，因为接受都是在规约之后(即在上面那里接受)
                 strcpy(analyses[_STEP].Action, "acc\0");
                 out_slr1_table_item();
                 printf("accepted! %s\n", analyses[_STEP].Action);
+                syntax_success = true;
+                return;
             } else {
                 printf("unexpected status!\n");
                 exit(-1);
             }
         }
 	}
-	
+	out_slr1_table_item();
+    if (!syntax_success) printf("missing '#' at the end of the text!\n");
     
     if (0 == feof){
 		printf("fgets error\n"); // 未读到文件末尾
@@ -1110,9 +1186,6 @@ ACTION_S:
 	}
     fclose(lex_reader);
 }
-
-
-
 
 void slr1_runner(){
     FILE* fp = fopen("files/item_set.txt", "w");

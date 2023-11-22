@@ -1,5 +1,8 @@
 begin   
-        if 1 > 2
+        if 1 > 2 or 3 < 5
         then
-    x:=1+23*1+5/5;
-end#
+        if 2 < 4
+        then x:=1+23*1+5/5;
+        if 2 + 3 > 4 + 4
+        then  y:=2;
+end
