@@ -96,12 +96,7 @@ symbol newtemp(){ //生成新的临时变量
 }
 set<string> oprts = {"<", ">", "<=", ">=", "==", "!="};
 
-
 vector<symbol> rop_res;     // 保存一些rop的结果 -> 可以得到truelist
-// stack<int> if_list;         // 一个if-list一定对应一个then，也就对应一个then_false_list
-// stack<int> then_false_list; // 可以得到falselist
-
-
 
 
 void GEN(const string& op, int arg1, int arg2, symbol &result){
@@ -755,39 +750,18 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     }
     return res;
 }
-// to be optimized------to do !!!!!
+
 void backpatch(vector<int>& v, int gotostm, string from=""){    // 回填
-    if (from == "or" || from == "and") goto OR_AND;
-    if (is_digit(from[0])) goto DIRECT_BACKFILL;
-    cout << "normal backpatch\n";
-    if (rop_res.size()) {
-        cout << "rop_res size:" << rop_res.size() << endl;
-        if (rop_res.back().truelist.size()){
-            cout << "huitianlo:" << rop_res.back().truelist[0] << endl;
-            auto tmp_quad = quads[rop_res.back().truelist[0]];
-            if (tmp_quad.op == "goto") {
-                quads[rop_res.back().truelist[0]].arg1Index = gotostm;
-                cout << "goto\n";
-            }
-            else if (oprts.count(tmp_quad.op)) {
-                quads[rop_res.back().truelist[0]].result.varName = to_string(gotostm);
-                cout << quads[0].result.varName << " " << gotostm << endl;
-                cout << rop_res.back().truelist[0] << "not goto\n";
-            }
-            rop_res.back().truelist.pop_back();
-            return;
-        }
-    }
+    if (from == "or" || from == "and") goto OR_AND; // 布尔表达式的回填
+
+    for (auto ls:v){    // if 语句的回填
+        auto tmp_quad = quads[ls];
+        if (tmp_quad.op == "goto") quads[ls].arg1Index = gotostm;
+        else if (oprts.count(tmp_quad.op)) quads[ls].result.varName = to_string(gotostm);
+    }  
     return;
-DIRECT_BACKFILL:
-    cout << "DIRECT_BACKFILL\n";
-    // 这里一定是一个(goto, _)
-    quads[stoi(from)].arg1Index = gotostm;
-    // then_false_list.pop();
-    // if_list.pop();
-    return;
+
 OR_AND:
-    cout << "use backpatch, and gotostm is:" << gotostm << "\n";
     if (v.size() == 0) {
         cout << "size == 0\n";
         v.push_back(gotostm);
@@ -920,16 +894,12 @@ ACTION_S:
                     cout << "debug true:" << symbol_before_then.varName << "," << symbol_before_then.valueStr << "," << symbol_before_then.truelist.size() << "," << symbol_before_then.falselist.size() << endl;
                     if (symbol_before_then.truelist.size())
                         backpatch(symbol_before_then.truelist, quads.size());
-                    // if_list.push(quads.size() - 1);
                     cout << "then enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
                 } else if (tempSym.varName == "and"){
                     cout << "and enter char_stk!" << quads.size() << endl;
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
-                } else if (tempSym.varName == "if"){ // 记录if的数目
-                    // if_list.push(quads.size());
                 }
-
                 _STEP ++;
             } else if (next_st[0] == 'r') {
 /*================================！语法分析 + 语法制导的语义分析！================================*/
@@ -1012,9 +982,7 @@ ACTION_S:
                                 cout << "gotostm stk size:" << gotostm.size() << endl;
                                 cout << "now goto stm is:" << gotostm.top() << endl;
                                 cout << "quads.size:" << quads.size() << endl;
-                                // vector<int> tmp_list;
                                 backpatch(E1.falselist, gotostm.top(), "or");
-                                
                                 gotostm.pop();
                                 // merge
                                 res = symbol{"_"};
@@ -1119,17 +1087,6 @@ ACTION_S:
                                 }
                                 stk_symbol_before_then.pop();
                             }
-                            
-                            
-                            // cout << "use S-> if B then S" << "   " ;
-                            // symbol b = char_stk.stack[char_stk.idx - 1];
-                            // cout << b.varName << ", " << b.rawName << ", " << b.valueStr << ", " << b.truelist.size() << ", " << b.falselist.size() << endl;
-                            // cout << semantic.top() << endl;
-                            // // 并且，和最近的if搭配。！！
-                            // then_false_list.push(quads.size());
-                            // vector<int> tmp;    // 无意义的占位
-                            // backpatch(tmp, then_false_list.top(), to_string(if_list.top()));
-                        
                         }
                     
                     stat_stk.idx -= num, char_stk.idx -= num;   // 出栈！
