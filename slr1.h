@@ -648,7 +648,7 @@ char *get_input(char buf[]){ // 获取分析过程中面临的输入
     return s;
 }
 
-string missing_check(){ // if和then搭配，begin和end搭配，那你呢
+string missing_check(){ // if有then搭配，begin有end搭配，那你呢。
     int cnt_then = 0, cnt_if = 0, cnt_begin = 0, cnt_end = 0;
     for (int i = char_stk.idx - 1; i >= 0; -- i){
         if (char_stk.stack[i].varName == "then") cnt_then ++;

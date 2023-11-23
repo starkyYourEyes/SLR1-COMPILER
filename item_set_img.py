@@ -64,5 +64,5 @@ output_path = 'files/item_sets'
 dot.attr('graph', nodesep='0.1', ranksep='0.1',size='200,100',rankdir='LR')
 dot.attr('node', shape='box',  style='filled', width='3')
 
-dot.render(output_path, format='png', view=False,engine='dot')
+dot.render(output_path, format='png', view=False, engine='dot')
 
