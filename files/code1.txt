@@ -1,0 +1,14 @@
+begin 
+        x := 2;
+        y := 4;
+        p := 1 + x * 3 / (4 $ y) $ 9 + ( -x );  ~ 除0错误
+        if x > y
+        then 
+                z := 5;
+        if x > 3 and z == 2
+        then 
+                begin 
+                        y := 1;
+                        q := 4;
+                end;
+end#

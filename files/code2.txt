@@ -1,0 +1,15 @@
+begin 
+    x := 2;
+    if x >= 3 or x <= 1
+    then 
+        x := 5;
+    y := 4;
+    if y != 2   ~ 嵌套的if -> and
+    then 
+        if x == 5   
+        then 
+            if x != 3
+            then
+                x := y + x;
+
+end#

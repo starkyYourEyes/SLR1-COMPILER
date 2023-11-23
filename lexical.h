@@ -91,8 +91,8 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
             ++ *loc;
             if (s[*loc] == '='){
                 //单引号：字符；双引号：字符串
-                printf("(%c=, rop, %d)\n", s[*loc], line);
-                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
+                printf("(%c=, rop, %d)\n", s[*loc - 1], line);
+                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc - 1], line);
             } else {
                 -- *loc;
                 printf("(%c, rop, %d)\n", s[*loc], line);
@@ -103,8 +103,8 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
             ++ *loc;
             if (s[*loc] == '='){
                 //单引号：字符；双引号：字符串
-                printf("(%c=, rop, %d)\n", s[*loc], line);
-                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
+                printf("(%c=, rop, %d)\n", s[*loc - 1], line);
+                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc - 1], line);
             } else {
                 -- *loc;
                 goto ERROR;
@@ -114,8 +114,8 @@ void scanner(char *s, int *loc, int line, FILE* fp_res){
             ++ *loc;
             if (s[*loc] == '='){	
                 //单引号：字符；双引号：字符串
-                printf("(%c=, rop, %d)\n", s[*loc], line);
-                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc], line);
+                printf("(%c=, rop, %d)\n", s[*loc - 1], line);
+                fprintf(fp_res, "(%c=, rop, %d)\n", s[*loc - 1], line);
             } else {
                 -- *loc;
                 goto ERROR;
@@ -171,6 +171,10 @@ void lex_runner(char *path){
         line_ct_num ++;
         for(; buf[loc]; loc ++){
             char ch = buf[loc];
+            if (ch == '~') {
+                for (++ loc; buf[loc] != '\n'; ++ loc);
+                continue;
+            }
             if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' ) continue;
             scanner(buf, &loc, line_no, fp_res);
         }

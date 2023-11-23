@@ -1,3 +1,4 @@
+import sys
 from tabulate import tabulate
 with open("files/slr1_first_follow_set.txt", "r", encoding='utf-8') as fp:
     ff = fp.readlines()
@@ -22,7 +23,7 @@ for i in res_dict:
 print('\033[32mfirst&follow sets:\033[0m')
 print(tabulate(table, tablefmt='fancy_grid'))
 
-with open("files/code.txt", 'r', encoding='utf-8') as fp:
+with open(sys.argv[1], 'r', encoding='utf-8') as fp:
     code = fp.read()
 print('\n\033[32msource file:\033[0m')
 print(tabulate([[code]], tablefmt='fancy_grid'))
@@ -57,6 +58,12 @@ table = [['step', 'stat-stk', 'char-stk', 'current input', 'ACTION', 'GOTO']]
 for p in process:
     table.append(p.strip().split('|')[1:-1])
 print(tabulate(table, tablefmt='fancy_grid'))
+
+with open(sys.argv[1], 'r', encoding='utf-8') as fp:
+    code = fp.read()
+print('\n\033[32msource file:\033[0m')
+print(tabulate([[code]], tablefmt='fancy_grid'))
+
 
 print('\n\033[32mquads:\033[0m')
 with open("files/quads.txt", "r", encoding='utf-8') as fp:

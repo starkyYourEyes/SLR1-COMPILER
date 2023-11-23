@@ -1,0 +1,5 @@
+begin
+    x := 5;
+    if x > 2
+    then z := 66;
+#                   ~ 缺失 end

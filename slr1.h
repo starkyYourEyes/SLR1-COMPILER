@@ -123,7 +123,14 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个�
         ENTRY[result.varName] = result.PLACE;
     } else if (op == "/") { // 将临时变量result注册进入符号表
         result.PLACE = symbolTable.size();
-        result.valueStr = to_string(atoi(symbolTable[arg1].valueStr.c_str()) / atoi(symbolTable[arg2].valueStr.c_str()));
+        int x = stoi(symbolTable[arg1].valueStr);
+        int y = stoi(symbolTable[arg2].valueStr);
+        if (y == 0) {
+            cout << "\nline " << current_line + 1 << ": " << "zero division error!\n";
+            exit(-1);
+        }
+        int z = x / y;
+        result.valueStr = to_string(z);
         symbolTable.push_back(result);
         ENTRY[result.varName] = result.PLACE;
     } else if (op == ":="){ 
@@ -164,7 +171,7 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个�
         else if (symbolTable[arg1].valueStr == "0")
             result.valueStr = "1";
         else {
-            cout << "error in not()\n";
+            cout << "\nerror in not()\n";
             exit(-1);
         }
         symbolTable.push_back(result);
@@ -174,7 +181,7 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个�
     } else if (oprts.count(op)){
         // for no error report  
     } else{
-        cout << "unexpected operator in GEN()!\n";
+        cout << "\nunexpected operator in GEN()!\n";
         exit(-1);
     }
 }
@@ -182,7 +189,7 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个�
 void out_quad(vector<quad> &v){ // 输出所有的四元式
     FILE* fp = fopen("files/quads.txt", "w");
     if (fp == NULL) {
-        printf("write %s failed.", "files/quads.txt");
+        printf("\nwrite %s failed.", "files/quads.txt");
         exit(-1);
     }
     int idx = 0;
@@ -233,7 +240,6 @@ int add_item_to_set(struct lr_item_set* set, int i){ // 参数i表示是第几�
         set->item_set[set->cnt ++] = it;
         if (set->cnt >= NUM_PER_SET) return -1; 
     }
-        // 超长了 
     return 1;
 }
 bool is_front_repeated(struct lr_item_set* S, char str[]){ // 在移进的时候是否遇到重复的字符（串
@@ -305,7 +311,7 @@ void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
                 int left = get_production_left(lines[j]);
                 // 大于1就出错了，因为最长的S'的left才是1
                 if (left > 0) {
-                    printf("left:%d, in line %d:%s  error left, unrecommended space ' '!\n", left, j, lines[j]); 
+                    printf("\nleft:%d, in line %d:%s  error left, unrecommended space ' '!\n", left, j, lines[j]); 
                     exit(-1);
                 }     
                 if (ch == lines[j][left]) add_item_to_set(S, j);
@@ -336,7 +342,7 @@ void shift(struct lr_item_set* S){ // 移进
                 for (int i = 0; i < S->cnt; ++ i){
                     printf("%d, %s\n", S->item_set[i].loc, S->item_set[i].item);
                 }
-                printf("error!!!!!!\n");
+                printf("\nfatal error!!!!!!\n");
                 exit(-1);
             }
             strcpy(tmp, s);
@@ -389,8 +395,7 @@ void shift(struct lr_item_set* S){ // 移进
 
 void init(struct lr_item_set** S){ // 求初始的第一个 项目集。
     UID = 0;
-    CONTINUE_ = -1;
-      // 记得初始化值！
+    CONTINUE_ = -1; // 记得初始化值！
     (*S) = init_lr_item_set();
     add_item_to_set(*S, 0);
     (*S)->core = 1;
@@ -406,7 +411,7 @@ int is_in_follow_set(char *vn, char *s){ // 判断vn的follow集包不包含s
     int no = get_vn_no(vn);
     if (no == -1){
         printf("find vn is:%s\n", vn);
-        printf("find error!\n");
+        printf("\nfind error!\n");
         exit(-1);
     }
     for (int i = 0; i < FOLLOW_[no].cnt; ++ i)
@@ -429,7 +434,6 @@ void lr_table_generator(){ // 生成SLR1分析表
     for (int i = 0; i < UID; ++ i){
         TABLE_ITEM[i].status = i;
         bool reduce = ALL_LR_ITEM_SET[i]->can_reduce;
-        int which = -1; // 如果是有移进-规约冲突，which记录下来是哪一个vn
         int rs[COUNT] = {0};    // 记录哪些项目可以进行规约了
         int num_rs = 0;
         int ts[COUNT] = {0};    // 可以移进的项目的非终结符的序号
@@ -443,7 +447,6 @@ void lr_table_generator(){ // 生成SLR1分析表
                 int loc = ALL_LR_ITEM_SET[i]->item_set[j].loc;
                 if (ALL_LR_ITEM_SET[i]->item_set[j].item[loc] == '\0'){
                     // if ()
-                    which = j;
                     rs[num_rs ++] = j;
                 } else {    // is_prefix返回的是一个非终结符 或者 NULL
                     char *s = is_prefix(ALL_LR_ITEM_SET[i]->item_set[j].item + loc);
@@ -469,13 +472,13 @@ void lr_table_generator(){ // 生成SLR1分析表
                         is_error ++;
                         if (is_error >= 2){
                             printf("%d\n", i);
-                            printf("%s is in follow set!", V->vt[ts[h]]);
+                            printf("\n%s is in follow set!", V->vt[ts[h]]);
                             exit(-1);
                         }
                     }
                 }   
             }
-            if (num_rs == 1) { // 只有一条·到达末尾的，在其FOLLOW集里面就能规约
+            if (num_rs == 1) { // 只有一条·到达末尾的，在其FOLLOW集里面就规约，但是会产生移进-规约冲突，下面解决
                 // 拿到产生式左边的终结符
                 int t = get_production_left(ALL_LR_ITEM_SET[i]->item_set[rs[0]].item);
                 char tmp_vn[5] = {0};
@@ -493,7 +496,7 @@ void lr_table_generator(){ // 生成SLR1分析表
                         strcpy(TABLE_ITEM[i].ACTION[j], tmp);
                     }
                 // printf("\n");
-            } else if (num_rs > 1){    // 有多个，判断是否有规约规约冲突
+            } else if (num_rs > 1){    // 有多个，判断是否有规约-规约冲突
                 for (int k = 0; k < num_rs; ++ k){
                     for (int h = k + 1; h < num_rs; ++ h){
                         char tmp1[5], tmp2[5];
@@ -506,7 +509,7 @@ void lr_table_generator(){ // 生成SLR1分析表
                             tmp2[m] = ALL_LR_ITEM_SET[i]->item_set[h].item[m];
                         tmp2[len + 1] = '\0';
                         if (!is_null_unite_sets(tmp1, tmp2)){
-                            printf("%s %s follow set unite is not null!\n", tmp1, tmp2);
+                            printf("\n%s %s follow set unite is not null!\n", tmp1, tmp2);
                             exit(-1);
                         }
                     }
@@ -545,11 +548,11 @@ void lr_table_generator(){ // 生成SLR1分析表
                                         can_solve = true;
                                         break;
                                     } else if (iitem[q] == 'o' && iitem[q + 1] && iitem[q + 1] == 'r') {
-                                        // and 和 or 的优先级无所谓
+                                        // and 和 or 的优先级 -> 从左到右计算
                                         can_solve = true;
                                         break;
                                     } else if (iitem[q] == 'a' && iitem[q + 1] && iitem[q + 1] == 'n' && iitem[q + 2] && iitem[q + 2] == 'd') {
-                                        // and 和 or 的优先级无所谓
+                                        // and 和 or 的优先级 -> 从左到右计算
                                         can_solve = true;
                                         break;
                                     }
@@ -571,7 +574,7 @@ void lr_table_generator(){ // 生成SLR1分析表
                 itoa(ALL_LR_ITEM_SET[i]->next[j].status, tmp, 10);  // int to str
                 strcpy(TABLE_ITEM[i].GOTO[no], tmp);
             } else {
-                printf("error error error\n");
+                printf("\nerror error error\n");
                 exit(-1);
             }
         }
@@ -583,7 +586,7 @@ int get_current_line(char buf[]){ // 获取正在进行分析的行号。
     for (++ loc; buf[loc] && buf[loc] != ','; ++ loc);  // 找到第二个逗号的位置
     for (loc ++; buf[loc] && buf[loc] == ' '; ++ loc);  // 跳过空格
     if (buf[loc] < '0' || buf[loc] > '9') {
-        printf("error in get_current_line()!\n");
+        printf("\nerror in get_current_line()!\n");
         exit(-1);
     }
     for (; buf[loc] && (buf[loc] >= '0' && buf[loc] <= '9'); ++ loc)
@@ -617,7 +620,7 @@ void out_stk(int mode, FILE *fp){ // 打印栈内的数据 mode = 1 -> 状态栈
             }
         }
     } else {
-        printf("bad argument 'mode' in out_stk()\n");
+        printf("\nbad argument 'mode' in out_stk()\n");
         exit(-1);
     }
 }
@@ -641,7 +644,7 @@ char *get_input(char buf[]){ // 获取分析过程中面临的输入
     for (; buf[loc] && buf[loc] != ','; ++ loc){};      // 找到,即（**, **）中的第二项
     for (loc ++; buf[loc] && buf[loc] == ' '; ++ loc);  // 跳过空格
     if (!buf[loc]){
-        printf("fatal error!\n");
+        printf("\nfatal error!\n");
         exit(-1);
     }
     char *s = is_prefix(buf + loc);
@@ -679,8 +682,10 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
             out_slr1_table_item();
             printf("syntax error!\n");
             string missing_res = missing_check();
-            if (missing_res == "") printf("line %d: An error occured before '%s'!\n", current_line + 1, input);
-            else printf("line %d: missing '%s' after '%s'.", current_line, missing_res.c_str(), p[missing_res].c_str());
+            
+            if (missing_res == "then") printf("\nline %d: missing '%s' after '%s'.", current_line + 1, missing_res.c_str(), p[missing_res].c_str());
+            else if (string(input) == string("#") and missing_res == "end") printf("\nline %d: missing '%s' after '%s'.", current_line + 1, missing_res.c_str(), p[missing_res].c_str());
+            else printf("\nline %d: An error occured near '%s'!\n", current_line + 1, input);
             exit(-1);
         }
         return TABLE_ITEM[ct].ACTION[in_no];
@@ -696,13 +701,14 @@ char *get_next_status(int ct, char *input, int mode){ // 获取分析过程中�
             // printf("line %d:an error occured when finding GOTO %d, to:%s\n", current_line, ct, input);
             printf("syntax error!\n");
             string missing_res = missing_check();
-            if (missing_res == "") printf("line %d: An error occured before '%s'!\n", current_line + 1, input);
-            else printf("line %d: missing '%s' after '%s'.", current_line, missing_res.c_str(), p[missing_res].c_str());
+            if (missing_res == "then") printf("\nline %d: missing '%s' after '%s'.", current_line + 1, missing_res.c_str(), p[missing_res].c_str());
+            else if (string(input) == string("#") and missing_res == "end") printf("\nline %d: missing '%s' after '%s'.", current_line + 1, missing_res.c_str(), p[missing_res].c_str());
+            else printf("\nline %d: An error occured near '%s'!\n", current_line + 1, input);
             exit(-1);
         }
         return TABLE_ITEM[ct].GOTO[in_no];
     } else {                // error
-        printf("argument mode error!\n");
+        printf("\nargument mode error!\n");
         exit(-1);
     }
 }
@@ -714,7 +720,7 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
     ++ loc;
     for (; lines[line][loc] && lines[line][loc] == ' '; ++ loc){};
     if (lines[line][loc] == '\0'){
-        printf("error in count_production_right_num!\n");
+        printf("\nerror in count_production_right_num!\n");
         exit(-1);
     }
     while (lines[line][loc]){   // 双指针
@@ -723,7 +729,7 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
         } else {
             char *s = is_prefix(lines[line] + loc);
             if (s == NULL){
-                printf("error in count_production_right_num!\n");
+                printf("\nerror in count_production_right_num!\n");
                 exit(-1);
             } else {
                 loc += strlen(s);
@@ -733,7 +739,7 @@ int count_production_right_num(int line){ // 获取产生式右边的元素（Vn
         for (; lines[line][loc] && lines[line][loc] == ' '; ++ loc){};
     }
     if (res <= 0){
-        printf("unexpected error in count_production_right_num!\n");
+        printf("\nunexpected error in count_production_right_num!\n");
         exit(-1);
     }
     return res;
@@ -760,13 +766,15 @@ vector<int> merge(vector<int>& v1, vector<int>& v2){ // 两个链 merge
     return ans;
 }
 
-bool is_declared(string& s){ // 查看符号表中是否有这个符号
-    if (is_digit(s[0])) return true;    // 跳过数字
+bool is_declared(string s="", string value=""){ // 查看某个符号是否有效
+    if (value == "" or value == "_") return false;
+    if (is_digit(s[0]) or s[0] == 'T') return true;    // 跳过数字
     if (is_alpha(s[0]))
         for (int i = 0; i < symbolTable.size() - 1; ++ i)
             if (s == symbolTable[i].varName or s == symbolTable[i].rawName)
                 return true;
     return false;
+
 }
 
 void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
@@ -775,18 +783,18 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
     FILE* lex_reader = fopen("files/lex_res.txt", "r");
     analyse_res = fopen("files/slr1_process.txt", "w");
     if (lex_reader == NULL) {
-        printf("read %s error!\n", "files/les_res.txt");
+        printf("\nread %s error!\n", "files/les_res.txt");
         exit(-1);
     }
     if (analyse_res == NULL) {
-        printf("write %s error!\n", "files/slr1_process.txt");
+        printf("\nwrite %s error!\n", "files/slr1_process.txt");
         exit(-1);
     }
     
     char buf[LINE_MAX];   
     stack<int> gotostm;     // M.gotostm
-    stack<string> semantic; // 语义栈
-    stack<symbol> stk_symbol_before_then;   // 用于if的回填
+    stack<string> semantic; // 语义栈，用于算术表达式的计算
+    stack<symbol> stk_symbol_before_then;   // 用于if的回填, 可以嵌套if
 
     char *input;            // 当前读入的字符
     char *next_st;          // 下一个状态
@@ -798,7 +806,7 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
         input = get_input(buf);     // 当前面临的输入
         current_line = get_current_line(buf);
         if (input == NULL) {
-            printf("line %d: error in get_input()!\n", current_line + 1);
+            printf("\nline %d: error in get_input()!\n", current_line + 1);
             exit(-1);
         }
         
@@ -900,30 +908,35 @@ ACTION_S:
                             symbol E, id;
                             E = char_stk.stack[char_stk.idx - 1];
                             id = char_stk.stack[char_stk.idx - 3];
+                            string e_name = semantic.top();
                             if (is_digit(id.rawName[0]) or id.rawName == "true" or id.rawName == "false"){
-                                cout << "line " << current_line + 1 << ": You can't assign value to a constant.\n";
+                                cout << "\nline " << current_line + 1 << ": You can't assign value to a constant.\n";
                                 exit(-1);
-                            } else if (!is_declared(E.rawName) and E.varName[0] != 'T' and !is_vn(E.varName[0])) {
+                            } else if (!is_declared(E.rawName, E.valueStr) and !is_declared(e_name, symbolTable[ENTRY[e_name]].valueStr)) {
+                                cout << "\nline " << current_line + 1 << ": '" << e_name << "' is not declared!\n";
                                 exit(-1);
                             }
-
                             GEN(":=", E.PLACE, -1, id);
                         } else if (line >= nnnn + 1 && line <= mmmm){ // E->E+$*/E
                             string opt[4] = {"+", "$", "*", "/"};
                             symbol T = newtemp();
                             symbol E1 = char_stk.stack[char_stk.idx - 3];
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
-                            // cout << "E1:" << E1.varName << ", " << E1.valueStr << ", " << E1.rawName << endl;
-                            if (!is_declared(E1.rawName) and E1.varName[0] != 'T' and !is_vn(E1.varName[0])) {
+                            
+                            // 得到语义栈顶的两个元素
+                            string e2_name = semantic.top();
+                            semantic.pop();
+                            string e1_name = semantic.top();
+                            semantic.pop();
+                            
+                            GEN(opt[line - (nnnn + 1)], E1.PLACE, E2.PLACE, T);
+                            if (!is_declared(E1.rawName, E1.valueStr) and !is_declared(e1_name, symbolTable[ENTRY[e1_name]].valueStr)) {
+                                cout << "\nline " << current_line + 1 << ": '" << e1_name << "' is not declared!\n";
                                 exit(-1);
-                            } else if (!is_declared(E2.rawName) and E2.varName[0] != 'T' and !is_vn(E2.varName[0])) {
-                                cout << E2.rawName << "," << E2.varName << "," << E2.valueStr << endl;
-                                cout << "line " << current_line + 1 << ": '" << E2.rawName << "' is not declared!\n";
+                            } else if (!is_declared(E2.rawName, E2.valueStr) and !is_declared(e2_name, symbolTable[ENTRY[e2_name]].valueStr)) {
+                                cout << "\nline " << current_line + 1 << ": '" << e2_name << "' is not declared!\n";
                                 exit(-1);
                             }
-                            GEN(opt[line - (nnnn + 1)], E1.PLACE, E2.PLACE, T);
-                            semantic.pop(); // 更新语义栈
-                            semantic.pop();
                             semantic.push(T.varName);
                             // 保存这次规约的结果。
                             PLACE = T.PLACE;
@@ -931,8 +944,9 @@ ACTION_S:
                         } else if (line == mmmm + 1){ // E-> -E
                             symbol T = newtemp();
                             symbol E1 = char_stk.stack[char_stk.idx - 1];
-                            if (!is_declared(E1.rawName) and E1.varName[0] != 'T' and !is_vn(E1.varName[0])) {
-                                cout << "line " << current_line + 1 << ": '" << E1.rawName << "' is not declared!\n";
+                            string e_name = semantic.top();
+                            if (!is_declared(E1.rawName, E1.valueStr) and !is_declared(e_name, symbolTable[ENTRY[e_name]].valueStr)) {
+                                cout << "\nline " << current_line + 1 << ": '" << E1.rawName << "' is not declared!\n";
                                 exit(-1);
                             }
                             semantic.pop();
@@ -957,7 +971,7 @@ ACTION_S:
                             symbol E2 = char_stk.stack[char_stk.idx - 1];
                             if (opt[line - bbbb] == "or"){
                                 if (gotostm.empty()) {
-                                    cout << "error, no gotostm yet\n";
+                                    cout << "\nerror, no gotostm yet\n";
                                     exit(-1);
                                 }
                                 backpatch(E1.falselist, gotostm.top(), "or");
@@ -968,7 +982,7 @@ ACTION_S:
                                 res.falselist  = E2.falselist;
                             } else {
                                 if (gotostm.empty()) {
-                                    cout << "error, no gotostm yet\n";
+                                    cout << "\nerror, no gotostm yet\n";
                                     exit(-1);
                                 }
                                 backpatch(E1.truelist, gotostm.top(), "and");
@@ -998,7 +1012,14 @@ ACTION_S:
                             string opr = char_stk.stack[char_stk.idx - 2].valueStr;
                             res.truelist.push_back(quads.size());
                             res.falselist.push_back(quads.size() + 1);
-
+                            
+                            if (!is_declared(E1.rawName, E1.valueStr) and !is_declared(e1_name, symbolTable[ENTRY[e1_name]].valueStr)) {
+                                cout << "\nline " << current_line + 1 << ": '" << e1_name << "' is not declared!\n";
+                                exit(-1);
+                            } else if (!is_declared(E2.rawName, E2.valueStr) and !is_declared(e2_name, symbolTable[ENTRY[e2_name]].valueStr)) {
+                                cout << "\nline " << current_line + 1 << ": '" << e2_name << "' is not declared!\n";
+                                exit(-1);
+                            }
                             GEN(opr, ENTRY[e1_name], ENTRY[e2_name], res);
                             GEN("goto", -1, -1, tempSym);   // tempSym没什么用
         
@@ -1043,6 +1064,7 @@ ACTION_S:
                 if (next_st[0] == 'S') goto ACTION_S;
                 else if (next_st[0] == 'a') {   // 规约之后可以接受了！
                     strcpy(analyses[_STEP].Action, "acc\0");
+                    strcpy(analyses[_STEP].str_now, "#\0");
                     out_slr1_table_item();
                     printf("accepted!\n");
                     syntax_success = true;
@@ -1050,19 +1072,25 @@ ACTION_S:
                 }
             } else if (next_st[0] == 'a') {     // 判断是不是acc, 也许没用，因为接受都是在规约之后(即在上面那里接受)
                 strcpy(analyses[_STEP].Action, "acc\0");
+                strcpy(analyses[_STEP].str_now, "#\0");
                 out_slr1_table_item();
                 printf("accepted! %s\n", analyses[_STEP].Action);
                 syntax_success = true;
                 return;
             } else {
-                printf("unexpected status!\n");
+                printf("\nexpected status!\n");
                 exit(-1);
             }
         }
 	}
 	out_slr1_table_item();
     if (!syntax_success) {
-        printf("missing '#' at the end of source code file!\n");
+        map<string, string> p;
+        p["end"] = "begin", p["begin"] = "end";
+        p["if"] = "then", p["then"] = "if";
+        string missing_res = missing_check();
+        if (missing_res != "") printf("\nline %d: missing '%s' after '%s'.", current_line + 1, missing_res.c_str(), p[missing_res].c_str());
+        else printf("\nmissing '#' at the end of source code file!\n");
         exit(-1);
     }
     if (0 == feof){
@@ -1075,7 +1103,7 @@ ACTION_S:
 void slr1_runner(){ // SLR1分析，启动！
     FILE* fp = fopen("files/slr1_item_set.txt", "w");
     if (NULL == fp){
-        printf("open %s failed.\n", "files/slr1_item_set.txt\0");
+        printf("\nopen %s failed.\n", "files/slr1_item_set.txt\0");
         exit(-1);
         return;
 	}
@@ -1091,7 +1119,7 @@ void slr1_runner(){ // SLR1分析，启动！
     printf("slr1 table:\n");
     {   FILE* fp_table = fopen("files/slr1_table.txt", "w");
         if (fp_table == NULL) {
-            printf("write %s failed.", "files/slr1_table.txt");
+            printf("\nwrite %s failed.", "files/slr1_table.txt");
             exit(-1);
         }
         printf("+------------------------------------------------------------------------------------------------------------------------------+\n");
