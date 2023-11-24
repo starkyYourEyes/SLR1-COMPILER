@@ -3,7 +3,7 @@
 ### 1.祖传文法 
 S’-> S  
 S-> CS  
-S-> begin L end  
+S-> begin K end  
 S-> A  
 **C-> if B then**  
 L-> S  
