@@ -13,7 +13,6 @@ using namespace std;
 
 #define COUNT 128            // 最多有多少个项目集
 #define MAX_LEN_PRODUCTION 20
-
 #define MAX_STATUS_NEXT 20  // 每一个项目集通过移进而到达的新的项目集的最大个数
 #define NUM_PER_SET 20      // 每一个项目集中最多的项目数
 #define MAX_STACK_SIZE 128
@@ -126,7 +125,7 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个�
         int x = stoi(symbolTable[arg1].valueStr);
         int y = stoi(symbolTable[arg2].valueStr);
         if (y == 0) {
-            cout << "\nline " << current_line + 1 << ": " << "zero division error!\n";
+            cout << "\nline " << current_line + 1 << ": " << "division by zero error!\n";
             exit(-1);
         }
         int z = x / y;
@@ -299,7 +298,6 @@ int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项�
 }
 void shift(struct lr_item_set* S);  // 函数声明，方便在expand()中调用
 void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
-    int scnt = S->cnt;  // 循环过程中，S->cnt会发生改变！！！！
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
         // to be optomized, to do
@@ -624,7 +622,7 @@ void out_stk(int mode, FILE *fp){ // 打印栈内的数据 mode = 1 -> 状态栈
         exit(-1);
     }
 }
-void out_slr1_table_item(){ // 输入分析过程中的每一步（每一行
+void out_slr1_table_item(){ // 输出分析过程中的每一步（每一行
     printf("|(%2d)| ", _STEP + 1);
     fprintf(analyse_res, "|(%2d)| ", _STEP + 1);
     out_stk(1, analyse_res); 
@@ -754,6 +752,7 @@ void backpatch(vector<int>& v, int gotostm, string from=""){ // 回填
         else if (oprts.count(tmp_quad.op)) quads[ls].result.varName = to_string(gotostm);
     }  
     return;
+
 OR_AND:
     for (const auto &e : v)
         if (quads[e].op == "goto") quads[e].arg1Index = gotostm;
@@ -798,6 +797,7 @@ void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
 
     char *input;            // 当前读入的字符
     char *next_st;          // 下一个状态
+
     while (fgets(buf, LINE_MAX, lex_reader)){
 		int line_len = strlen(buf); // while循环 排除换行符‘\n’ windos文本排除回车符'\r', 空格' '
 		while ('\n' == buf[line_len - 1] || '\r' == buf[line_len - 1] || ' ' == buf[line_len - 1]) buf[line_len - 1] = '\0', line_len--;
@@ -880,6 +880,7 @@ ACTION_S:
                 } else if (tempSym.varName == "and"){
                     gotostm.push(quads.size()); // 记录M指向的stm的位置
                 }
+                
                 _STEP ++;
             } else if (next_st[0] == 'r') {
 /*================================！语法分析 + 语法制导的语义分析！================================*/

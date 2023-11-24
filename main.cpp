@@ -15,21 +15,22 @@ int main(int argc, char *argv[]){
 	V->len_vn = V->len_vt = 0;
 
     get_vs(argv[1]);    // argv[1] -> grammar.txt
-    printf("print Vns and Vts:\n");
-    {
-        printf("%d Vns: \n", V->len_vn);
-        for (int i = 0; i < V->len_vn; ++i){
-            printf("%s", V->vn[i]);
-            if (i < V->len_vn - 1) printf(", ");
-        }
-        printf("\n");
-        printf("%d Vts: \n", V->len_vt);
-        for (int i = 0; i < V->len_vt; ++i){
-            printf("%s, ", V->vt[i]);
-            if (i < V->len_vn - 1) printf(", ");
-        }
-        printf("\n");
-    }
+   
+    // printf("print Vns and Vts:\n");
+    // {
+    //     printf("%d Vns: \n", V->len_vn);
+    //     for (int i = 0; i < V->len_vn; ++i){
+    //         printf("%s", V->vn[i]);
+    //         if (i < V->len_vn - 1) printf(", ");
+    //     }
+    //     printf("\n");
+    //     printf("%d Vts: \n", V->len_vt);
+    //     for (int i = 0; i < V->len_vt; ++i){
+    //         printf("%s, ", V->vt[i]);
+    //         if (i < V->len_vn - 1) printf(", ");
+    //     }
+    //     printf("\n");
+    // }
 
     read_lines(argv[1]);
 
