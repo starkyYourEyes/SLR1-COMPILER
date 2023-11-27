@@ -1,0 +1,10 @@
+begin 
+    x := 2;     ~ 赋值运算
+    if x > 3    ~ 布尔表达式和分支
+    then 
+        if x >= 2
+        then
+            if x >= 1
+            then
+                y := 25
+end#

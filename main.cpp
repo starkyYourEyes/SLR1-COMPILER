@@ -34,27 +34,28 @@ int main(int argc, char *argv[]){
 
     read_lines(argv[1]);
 
-    get_first_set();
+    get_first_set();    // 计算first集
+    cal_follow();       // follow集
 
     printf("\nfirst sets:\n");
-    // 打印first集并写入到文件中
-	for (int i = 0; i < V->len_vn; ++i){
-		printf("%-2s: { ", V->vn[i]);
-		fprintf(w_res, "%s:", V->vn[i]);
-		for (int j = 0; j < FIRST_[i].cnt; ++j){
-			printf("%s", FIRST_[i].set[j]);
-			fprintf(w_res, "%s ", FIRST_[i].set[j]);
-			if (j < FIRST_[i].cnt - 1) printf(", ");
-		}
-		printf(" }\n");
-		fprintf(w_res, "\n");
-	}
-	fprintf(w_res, "\n");
-
-    cal_follow();
     
+	{   // 打印first集并写入到文件中
+        for (int i = 0; i < V->len_vn; ++i){
+            printf("%-2s: { ", V->vn[i]);
+            fprintf(w_res, "%s:", V->vn[i]);
+            for (int j = 0; j < FIRST_[i].cnt; ++j){
+                printf("%s", FIRST_[i].set[j]);
+                fprintf(w_res, "%s ", FIRST_[i].set[j]);
+                if (j < FIRST_[i].cnt - 1) printf(", ");
+            }
+            printf(" }\n");
+            fprintf(w_res, "\n");
+        }
+        fprintf(w_res, "\n");
+    }
+
     printf("\nfollow sets:\n");
-	{
+	{   // 打印follow集并写入到文件中
         for (int i = 0; i < V->len_vn; ++ i){
             printf("%-2s:{ ", V->vn[i]);
             fprintf(w_res, "%s:", V->vn[i]);
@@ -71,7 +72,7 @@ int main(int argc, char *argv[]){
 	fclose(w_res);
 
     printf("\nlex res:\n");
-    lex_runner(argv[2]);
+    lex_runner(argv[2]);    // argv[2] -> code.txt
     printf("\nslr1 analyse:\n");
     slr1_runner();
 

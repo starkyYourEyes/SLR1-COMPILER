@@ -10,6 +10,6 @@ begin
         then 
             if x != 3
             then
-                x := y + x;
+                x := y + x
 
 end#

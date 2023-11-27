@@ -49,7 +49,7 @@ for i in table:
     tmp = i.split('|')[:-1:]
     tmp[0] = '(' + tmp[0] + ')'
     res_table.append(tmp)
-print(tabulate(res_table, tablefmt='fancy_grid'))
+print(tabulate(res_table, tablefmt='grid'))
 
 print('\n\033[32mSLR1 analyse process:\033[0m')
 with open("files/slr1_process.txt", "r", encoding='utf-8') as fp:

@@ -2,6 +2,6 @@ begin
     x := 2;
     y := x + 4;
     if x < y
-    q := 9;     ~ 缺失then
+    q := 9     ~ 缺失then
 
 end#

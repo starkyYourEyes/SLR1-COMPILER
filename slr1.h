@@ -16,15 +16,15 @@ using namespace std;
 #define MAX_STATUS_NEXT 20  // 每一个项目集通过移进而到达的新的项目集的最大个数
 #define NUM_PER_SET 20      // 每一个项目集中最多的项目数
 #define MAX_STACK_SIZE 128
-#define MAX_STEP 512       // 分析过程的最大步骤数
+#define MAX_STEP 512        // 分析过程的最大步骤数
 struct next_status{
-    int status;                     // 指向的下一个项目集的UID
-    char edge[MAX_LEN_VT];          // 通过那条边指向下一个项目集，即通过什么字符到达的
+    int status;             // 指向的下一个项目集的UID
+    char edge[MAX_LEN_VT];  // 通过那条边指向下一个项目集，即通过什么字符到达的
 };
 struct lr_item{
-    int loc;                        // 其中的·的位置
-    production item;                // LR分析的项目
-    bool operated;                  // 属于某一个项目集的某个项目在移进的时候是不是已经做过了
+    int loc;                // 其中的·的位置
+    production item;        // LR分析的项目
+    bool operated;          // 属于某一个项目集的某个项目在移进的时候是不是已经做过了
 };
 struct lr_item_set {  
     // lr项目集
@@ -44,10 +44,10 @@ struct lr_item_set* ALL_LR_ITEM_SET[COUNT];// 一个指针数组, 用来寻找�
 
 struct table_item { 
     // SLR分析表的每一行。
-    int status;                         // 每一行的编号，也即项目集编号
-    cpp_string ACTION[MAX_NUM_VT];      // 假设终结符最多40个，lazy
-    cpp_string GOTO[MAX_NUM_VN];        // 假设非终结符最多20个，lazy 2
-} TABLE_ITEM[COUNT];                    // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
+    int status;                     // 每一行的编号，也即项目集编号
+    cpp_string ACTION[MAX_NUM_VT];  // 假设终结符最多40个，lazy
+    cpp_string GOTO[MAX_NUM_VN];    // 假设非终结符最多20个，lazy 2
+} TABLE_ITEM[COUNT];                // 分析表有多少行(项目集有多少个), COUNT就取多少，可以malloc???
 
 int _STEP;                      // 分析过程中的每一行的编号（步骤
 int current_line;               // 语法分析正在进行分析的行号, 报错定位行号
@@ -89,6 +89,7 @@ vector<quad> quads;         // 四元式序列
 vector<symbol> symbolTable; // 符号表
 map<string, int> ENTRY;     // 用于查变量的符号表入口地址
 int tempVarNum = 0;         // 临时变量个数
+
 symbol newtemp(){           // 生成新的临时变量
     tempVarNum ++;
     return symbol{string("T" + to_string(tempVarNum))};
@@ -757,6 +758,7 @@ OR_AND:
     for (const auto &e : v)
         if (quads[e].op == "goto") quads[e].arg1Index = gotostm;
         else quads[e].result.varName = to_string(gotostm);
+
 }
 vector<int> merge(vector<int>& v1, vector<int>& v2){ // 两个链 merge
     vector<int> ans;
@@ -767,6 +769,7 @@ vector<int> merge(vector<int>& v1, vector<int>& v2){ // 两个链 merge
 
 bool is_declared(string s="", string value=""){ // 查看某个符号是否有效
     if (value == "" or value == "_") return false;
+    else if (is_digit(value[0])) return true;
     if (is_digit(s[0]) or s[0] == 'T') return true;    // 跳过数字
     if (is_alpha(s[0]))
         for (int i = 0; i < symbolTable.size() - 1; ++ i)
@@ -776,7 +779,7 @@ bool is_declared(string s="", string value=""){ // 查看某个符号是否有�
 
 }
 
-void syntax_analyse(){ // 根据 SLR1分析表 进行语法分析 + 语义计算
+void syntax_analyse(){ // 根据 SLR1分析表进行语法分析 + 语义计算
     _STEP = 0;
     // 读入词法分析的结果并进行语法分析
     FILE* lex_reader = fopen("files/lex_res.txt", "r");
@@ -870,9 +873,9 @@ ACTION_S:
                 char_stk.stack[char_stk.idx ++] = tempSym;
                 // or/and/then 入栈要记录一下位置，方便回填
                 if (tempSym.varName == "or") {
-                    gotostm.push(quads.size()); // 记录M指向的stm的位置, 回填
+                    gotostm.push(quads.size()); // 记录M指向的stm的位置, 用于回填
                 } else if (tempSym.varName == "then"){
-                    // then 入栈了，可以回填truelist
+                    // then 入栈了，可以回填truelist,(then的前面一定是一个布尔表达式)
                     stk_symbol_before_then.push(char_stk.stack[char_stk.idx - 2]);
                     if (stk_symbol_before_then.top().truelist.size())
                         backpatch(stk_symbol_before_then.top().truelist, quads.size());
@@ -1010,10 +1013,11 @@ ACTION_S:
                             semantic.pop();
                             // 将这两个元素放回去
                             semantic.push(e1_name); semantic.push(e2_name);
+
                             string opr = char_stk.stack[char_stk.idx - 2].valueStr;
                             res.truelist.push_back(quads.size());
                             res.falselist.push_back(quads.size() + 1);
-                            
+
                             if (!is_declared(E1.rawName, E1.valueStr) and !is_declared(e1_name, symbolTable[ENTRY[e1_name]].valueStr)) {
                                 cout << "\nline " << current_line + 1 << ": '" << e1_name << "' is not declared!\n";
                                 exit(-1);

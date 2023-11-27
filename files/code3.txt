@@ -4,5 +4,5 @@ begin
     s := x + y + (-1) + u + 2;  ~ 定义前使用的 错误
 
     if x > 1
-    then z := 2;
+    then z := 2
 end#

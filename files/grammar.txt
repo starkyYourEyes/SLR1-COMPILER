@@ -1,6 +1,6 @@
 S'->S
 S->CS 
-S->begin K end 
+S->begin L end 
 S->A
 C->if B then
 L->S

@@ -9,6 +9,6 @@ begin
         then 
                 begin 
                         y := 1;
-                        q := 4;
-                end;
+                        q := 4
+                end
 end#

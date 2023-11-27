@@ -8,10 +8,10 @@ E:- ( id
 B:not ( - id true false 
 
 S':# 
-S:# ; 
+S:# end ; 
 C:begin if id 
-L:; 
-K:end begin if id 
-A:# ; 
-E:+ $ * / ) rop # ; then or and 
+L:end ; 
+K:begin if id 
+A:# end ; 
+E:+ $ * / ) rop # end ; then or and 
 B:then or and ) 

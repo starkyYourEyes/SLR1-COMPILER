@@ -2,6 +2,6 @@ begin
     z := 2345;
     u := z $ 6;     ~ 缺失if
     x := 2 * z $ u;
-    then y := 1;
+    then y := 1
 
 end#
