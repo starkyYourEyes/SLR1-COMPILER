@@ -274,7 +274,6 @@ void del_lr_item_set(struct lr_item_set **S){ // 删除一个项目集（有重�
     free(*S);
 }
 int is_itemset_repeated(struct lr_item_set* S){ // 判断是否有一样的项目集
-    // to be optimized , to do
     // 判断是否有一样的项目集, 即核一样，在新增加完项目集并且把核添加进去了后判断。
     // 如果有重复的，就把重复的那个的UID返回回去
     // 无重复返回-1
@@ -301,7 +300,6 @@ void shift(struct lr_item_set* S);  // 函数声明，方便在expand()中调用
 void expand(struct lr_item_set* S){ // 项目集的 核 开始扩张
     for (int i = 0; i < S->cnt; ++ i){
         int loc = S->item_set[i].loc;
-        // to be optomized, to do
         char ch = S->item_set[i].item[loc]; 
         if (ch == '\0') continue;
         // 当前的第一个符号，如果是一个非终结符，则要在I0中添加项目，如果不是直接忽略
@@ -328,7 +326,7 @@ void shift(struct lr_item_set* S){ // 移进
         char c = S->item_set[i].item[loc];
         if (c == '\0') {
             S->can_reduce = true;   // ·到达末尾，可以进行规约
-            continue;  // to do, to be optimized
+            continue;
         }
         char tmp[MAX_LEN_VT];
         if (is_vn(c)) tmp[0] = c, tmp[1] = '\0';// 非终结符，移进一位
@@ -374,9 +372,8 @@ void shift(struct lr_item_set* S){ // 移进
                 }  
             }
             new_set->core = core;   // 核中项目的个数
-            // to do, to be optimized
             int res = is_itemset_repeated(new_set);
-            // printf("%d new_set core is:\n", new_set->core);
+
             for (int x = 0; x < new_set->core; ++ x){
                 int y = new_set->item_set[x].loc;
             }
@@ -1239,10 +1236,16 @@ void slr1_runner(){ // SLR1分析，启动！
 
     printf("analyse process:\n");
     syntax_analyse();
-
+    FILE* sym_table = fopen("files/sym_table.txt", "w");
+    if (sym_table == NULL){
+        printf("write %s failed.", "files/sym_table.txt");
+        exit(-1);
+    }
     cout << "\nsymbolTable" << endl;
-    for (auto & it : symbolTable)
+    for (auto & it : symbolTable){
         cout << it.varName << " " << it.valueStr << " " << it.PLACE << " " << it.truelist.size() << " " << it.falselist.size()  << endl;
+        fprintf(sym_table, "%d, %s, %s\n", it.PLACE, it.varName.c_str(), it.valueStr.c_str());
+    }
     cout << endl;
 
     cout << "ENTRY" << endl;

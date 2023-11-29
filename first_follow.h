@@ -222,7 +222,7 @@ void cal_first(struct SET *FIRST){	// 单步求first集
 			ct[1] = '\0';	 // 取ct，ct为产生式右边的第一个字符，判断他是不是非终结符。
 
 			// 这里其实只要执行一遍就可以了，扫描一遍，将右侧直接的终结符，如S->aS，这种的直接添加到first集
-			/*To be optimized*/
+
 			char *s = is_prefix(tmp);
 			if (s == NULL){ // 右边没有直接的非终结符，跳过
 			} else{		// 右边有直接的非终结符，加入到first集中
@@ -321,14 +321,10 @@ void cal_follow(){ // 计算follow集
 				char current_vn[2];	// 当前的这个非终结符,改造为字符串的形式
 				current_vn[0] =  lines[i][loc], current_vn[1] = '\0';
 				int n = get_vn_no(current_vn);
-				// printf("%c, %s, %s\n", lines[i][j], lines[i], current_vn);
-				// for (int i = 0 ; i < NODE_[n].cnt; ++ i)
-				// 	printf("%s, ", NODE_[n].set[i]);
-				// printf("==%s\n", vn_left);
+
 				if (!lines[i][j]){
 					// 如果当前这个非终结符是产生式最后一个字符，FOLLOW(当前) += FOLLOW(产生式左边)
 					if (!is_repeated(&NODE_[n], vn_left)){
-						// printf("%s depends on %s\n", current_vn, vn_left);
 						strcpy(NODE_[n].set[NODE_[n].cnt], vn_left);
 						NODE_[n].cnt += 1;
 					}
@@ -339,7 +335,6 @@ void cal_follow(){ // 计算follow集
 					if (!lines[i][j]){
 						printf("error3!"); return;
 					} 
-					// printf("lines[i] + j:%s\n", lines[i] + j);
 					char* s = is_prefix(lines[i] + j);	
 					if (s == NULL){	// 如果是非终结符，把他的first集添加进去
 						char tmp[2];
@@ -353,8 +348,6 @@ void cal_follow(){ // 计算follow集
 								FOLLOW_[n].cnt ++;
 							}
 					} else{	//如果是终结符, 直接添加
-						// printf("ct is vs:%s\n", s);
-						// printf("%s adds not repeated elements:%s\n",FOLLOW_[n].vn, s);
 						if (!is_repeated(&FOLLOW_[n], s)){
 							strcpy(FOLLOW_[n].set[FOLLOW_[n].cnt], s);
 							FOLLOW_[n].cnt ++;
@@ -379,15 +372,7 @@ void cal_follow(){ // 计算follow集
 			}
 		}
 	}
-	// printf("\n===============================================\n");
-	// for (int i = 0; i < V->len_vn; ++ i){
-	// 	printf("vn:%-2s--", V->vn[i]);
-	// 	for (int j = 0; j < NODE_[i].cnt; ++ j)
-	// 		printf("%s, ", NODE_[i].set[j]);
-	// 	printf("\n");
-	// }
-	// printf("\n===============================================\n");
-	
+
 	// 2.2 处理无自闭环的关系图。
 	for (int i = 0; i < V->len_vn; ++ i){
 		if (NODE_[i].cnt == 0) continue;
@@ -410,16 +395,7 @@ void cal_follow(){ // 计算follow集
 				j --;	// 最后一个被换到了当前的位置，所以j--
 			}
 		}
-	}
-	// printf("\n===============================================\n");
-	// for (int i = 0; i < V->len_vn; ++ i){
-	// 	printf("vn:%-2s--", V->vn[i]);
-	// 	for (int j = 0; j < NODE_[i].cnt; ++ j)
-	// 		printf("%s, ", NODE_[i].set[j]);
-	// 	printf("\n");
-	// }
-	// printf("\n===============================================\n");
-	
+	}	
 }
 
 #endif

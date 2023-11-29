@@ -64,6 +64,14 @@ with open(sys.argv[1], 'r', encoding='utf-8') as fp:
 print('\n\033[32msource file:\033[0m')
 print(tabulate([[code]], tablefmt='fancy_grid'))
 
+with open("files/sym_table.txt", 'r', encoding='utf-8') as fp:
+    sym_table = fp.readlines()
+print('\n\033[32msymbol table:\033[0m')
+table = [["no", "symbol", "value"]]
+for sym in sym_table:
+    table.append(sym.strip().split(", "))
+print(tabulate(table, tablefmt='fancy_grid'))
+
 
 print('\n\033[32mquads:\033[0m')
 with open("files/quads.txt", "r", encoding='utf-8') as fp:
