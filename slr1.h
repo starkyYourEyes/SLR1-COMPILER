@@ -177,9 +177,9 @@ void GEN(const string& op, int arg1, int arg2, symbol &result){ // 产生一个�
         symbolTable.push_back(result);
         ENTRY[result.varName] = result.PLACE;
     } else if (op == "goto"){
-        // for no error report
+        // ? for no error report
     } else if (oprts.count(op)){
-        // for no error report  
+        // ? for no error report  
     } else{
         cout << "\nunexpected operator in GEN()!\n";
         exit(-1);

@@ -317,7 +317,7 @@ void cal_follow(){ // 计算follow集
 			if (is_vn(lines[i][loc])){
 				// 对于产生式右侧的非终结符，计算其FOLLOW集
 				int j = loc + 1;
-				// to be optimized, 假设非终结符都是一个字符的长度
+				// todo, 假设非终结符都是一个字符的长度
 				char current_vn[2];	// 当前的这个非终结符,改造为字符串的形式
 				current_vn[0] =  lines[i][loc], current_vn[1] = '\0';
 				int n = get_vn_no(current_vn);
@@ -376,7 +376,7 @@ void cal_follow(){ // 计算follow集
 	// 2.2 处理无自闭环的关系图。
 	for (int i = 0; i < V->len_vn; ++ i){
 		if (NODE_[i].cnt == 0) continue;
-		// 如何处理环形依赖，如A依赖B，B依赖C，C依赖A，to be optimized
+		// todo, 如何处理环形依赖，如A依赖B，B依赖C，C依赖A
 		// 2.2.1 先处理所依赖的没有依赖的。。。如S依赖S',但是S'的FOLLOW不再依赖其他的
 		// 对于给定的这个文法。。到此就可以结束了...
 		for (int j = 0; j < NODE_[i].cnt; ++ j){
